@@ -71,11 +71,6 @@ public class CuttableGraph : MonoBehaviour
         //create new meshes
         _createdMeshes = new List<Mesh>();
 
-        //create mesh containers
-        // _leftPart = new GeneratedMesh();
-        // _rightPart = new GeneratedMesh();
-        // _generatedMeshes = new List<GeneratedMesh>();
-
         //initiate list for triangles
         _triangleVertices = new List<Vector3>(3);
         _triangleNormals = new List<Vector3>(3);
@@ -87,61 +82,56 @@ public class CuttableGraph : MonoBehaviour
         FillHoles();
 
         //create new parts
-        CreateNewObjects();
+        // CreateNewObjects();
     }
 
     private void SplitMesh()
     {
-        Dictionary<int, bool> _triangleIndexes = new Dictionary<int, bool>(3);
+        List<bool> _triangleIndexes = new List<bool>(3);
         List<int> _verticesIDs = new List<int>(3);
 
-        //iterate throught all triangles and split mesh in two
-        // for (int i = 0; i < _originalGeneratedMesh.triangles.Count; i++)
-        // {
-        //     for (int j = 0; j < _originalGeneratedMesh.triangles[i].Count; j += 3)
-        //     {
-        //         //get triangle and vertex side
-        //         _triangleIndexes.Clear();
-        //         _verticesIDs.Clear();
-        //         for (int t = 0; t < 3; t++)
-        //         {
-        //             _verticesIDs.Add(_originalGeneratedMesh.triangles[i][j + t]);
-        //             _triangleIndexes.Add(_verticesIDs[t], 
-        //                                     _cuttingPlane.GetSide(_originalGeneratedMesh.vertices[_originalGeneratedMesh.triangles[i][j + t]]));
-        //         }
+        // iterate throught all triangles and split mesh in two
+        for (int i = 0; i < _originalGraphMesh.triangles.Count; i += 3)
+        {
+            //get triangle and vertex side
+            _triangleIndexes.Clear();
+            _verticesIDs.Clear();
+            for (int t = 0; t < 3; t++)
+            {
+                _verticesIDs.Add(_originalGraphMesh.triangles[i + t].vertexID);
+                _triangleIndexes.Add(_cuttingPlane.GetSide(_originalGraphMesh.vertices[_verticesIDs[t]]));
+            }
 
-        //         //check if whole triangle on the left side or on the right side or crossing the plane
-        //         int _triangleType = 0;
-        //         foreach (var key in _triangleIndexes.Keys)
-        //         {
-        //             if (_triangleIndexes[key])
-        //                 _triangleType++;
-        //             else
-        //                 _triangleType--;
-        //         }
+            //check if whole triangle on the left side or on the right side or crossing the plane
+            int _triangleType = 0;
+            foreach (var vert in _triangleIndexes)
+            {
+                if (vert)
+                    _triangleType++;
+                else
+                    _triangleType--;
+            }
 
-        //         switch (_triangleType)
-        //         {
-        //             case 3: //whole triangle on left side
-        //             {
-        //                 _leftPart.AddTriangle(GetMeshTriangle(_verticesIDs.ToArray(), i));
+            print(_triangleType);
+            switch (_triangleType)
+            {
+                case 3: //whole triangle on left side
+                {
 
-        //                 break;
-        //             }
-        //             case -3: //whole triangle on right side
-        //             {
-        //                 _rightPart.AddTriangle(GetMeshTriangle(_verticesIDs.ToArray(), i));
+                    break;
+                }
+                case -3: //whole triangle on right side
+                {
 
-        //                 break;
-        //             }
-        //             default: //triangle crossing the plane
-        //             {
-
-        //                 break;
-        //             }
-        //         }
-        //     }
-        // }
+                    break;
+                }
+                default: //triangle crossing the plane
+                {
+                    Debug.Log("interseption found");
+                    break;
+                }
+            }
+        }
     }
 
     private void SeparateParts()
