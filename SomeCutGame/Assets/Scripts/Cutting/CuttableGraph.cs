@@ -29,6 +29,8 @@ public class CuttableGraph : MonoBehaviour
     private List<Vector3> _triangleNormals;
     private List<Vector2> _triangleUVs;
 
+    //debug
+    private float _time;
     void Start()
     {
         //
@@ -65,6 +67,9 @@ public class CuttableGraph : MonoBehaviour
 
     public async void CutAsync(Vector3 contactPoint, Vector3 planeNormal)
     {
+        //debug
+        _time = Time.time;
+
         //create cutting plane
         _cuttingPlane = new Plane(transform.InverseTransformDirection(planeNormal), transform.InverseTransformPoint(contactPoint));
 
@@ -83,52 +88,64 @@ public class CuttableGraph : MonoBehaviour
 
         //create new parts
         // CreateNewObjects();
+
+        //debug
+        print(Time.time - _time);
     }
 
     private void SplitMesh()
     {
-        List<bool> _triangleIndexes = new List<bool>(3);
+        //iterate throught all vertices and check side
+        List<bool> _vertexSides = new List<bool>(_originalGraphMesh.vertices.Count);
+        for (int i = 0; i < _originalGraphMesh.vertices.Count; i++)
+        {
+            _vertexSides.Add(_cuttingPlane.GetSide(_originalGraphMesh.vertices[i]));
+        }
+
         List<int> _verticesIDs = new List<int>(3);
+        List<bool> _triangleIndexes = new List<bool>(3);
 
         // iterate throught all triangles and split mesh in two
-        for (int i = 0; i < _originalGraphMesh.triangles.Count; i += 3)
+        for (int i = 0; i < _originalGraphMesh.triangles.Count; i++)
         {
-            //get triangle and vertex side
-            _triangleIndexes.Clear();
-            _verticesIDs.Clear();
-            for (int t = 0; t < 3; t++)
+            for (int j = 0; j < _originalGraphMesh.triangles[i].Count; j += 3)
             {
-                _verticesIDs.Add(_originalGraphMesh.triangles[i + t].vertexID);
-                _triangleIndexes.Add(_cuttingPlane.GetSide(_originalGraphMesh.vertices[_verticesIDs[t]]));
-            }
-
-            //check if whole triangle on the left side or on the right side or crossing the plane
-            int _triangleType = 0;
-            foreach (var vert in _triangleIndexes)
-            {
-                if (vert)
-                    _triangleType++;
-                else
-                    _triangleType--;
-            }
-
-            print(_triangleType);
-            switch (_triangleType)
-            {
-                case 3: //whole triangle on left side
+                //get triangle and vertex side
+                _verticesIDs.Clear();
+                _triangleIndexes.Clear();
+                for (int t = 0; t < 3; t++)
                 {
-
-                    break;
+                    _verticesIDs.Add(_originalGraphMesh.triangles[i][j + t]);
+                    _triangleIndexes.Add(_vertexSides[_verticesIDs[t]]);
                 }
-                case -3: //whole triangle on right side
-                {
 
-                    break;
-                }
-                default: //triangle crossing the plane
+                //check if whole triangle on the left side or on the right side or crossing the plane
+                int _triangleType = 0;
+                foreach (var vert in _triangleIndexes)
                 {
-                    Debug.Log("interseption found");
-                    break;
+                    if (vert)
+                        _triangleType++;
+                    else
+                        _triangleType--;
+                }
+
+                switch (_triangleType)
+                {
+                    case 3: //whole triangle on left side
+                    {
+
+                        break;
+                    }
+                    case -3: //whole triangle on right side
+                    {
+
+                        break;
+                    }
+                    default: //triangle crossing the plane
+                    {
+                        Debug.Log("interseption found");
+                        break;
+                    }
                 }
             }
         }

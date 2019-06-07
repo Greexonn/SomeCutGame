@@ -7,78 +7,60 @@ public class MeshTriangleGraph
     public List<Vector3> vertices;
     public List<Vector3> normals;
     public List<Vector2> uvs;
+    public List<List<int>> triangles;
 
-    public List<VertexNode> triangles;
+    public List<VertexNode> vertexNodes;
 
     public MeshTriangleGraph(Vector3[] meshVertices, Vector3[] meshNormals, Vector2[] meshUVs, int[][] meshTriangles)
     {
         vertices = new List<Vector3>(meshVertices);
         normals = new List<Vector3>(meshNormals);
         uvs = new List<Vector2>(meshUVs);
-
-        triangles = new List<VertexNode>();
+        triangles = new List<List<int>>(meshTriangles.Length);
         for (int i = 0; i < meshTriangles.Length; i++)
         {
-            for (int j = 0; j < meshTriangles[i].Length; j += 3)
-            {
-                //get triangle
-                for (int t = 0; t < 3; t++)
-                {
-                    int _vertexID = meshTriangles[i][j + t];
-
-                    bool _wasAdded = false;
-                    for (int m = 0; m < i; m++)
-                    {
-                        for (int v = 0; v < meshTriangles[m].Length; v++)
-                        {
-                            if (vertices[meshTriangles[m][v]] == vertices[meshTriangles[i][j]])
-                            {
-                                triangles.Add(new VertexNode(meshTriangles[m][v], i));
-                                _wasAdded = true;
-                                break;
-                            }
-                        }
-                        if (_wasAdded)
-                            break;
-                    }
-                    if (!_wasAdded)
-                    {
-                        triangles.Add(new VertexNode(meshTriangles[i][j], i));
-                    }
-                }
-            }
+            triangles.Add(new List<int>(meshTriangles[i])) ;
         }
 
-        VertexNode[] _nodeTriangle = new VertexNode[3];
+        vertexNodes = new List<VertexNode>(vertices.Count);
+
+        //build graph
+        //add all vertices
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            vertexNodes.Add(new VertexNode(i));
+        }
+        //add connected vertices to evry vertex
         for (int i = 0; i < triangles.Count; i++)
         {
-            for (int j = 0; j < triangles.Count; j += 3)
+            for (int j = 0; j < triangles[i].Count; j += 3)
             {
-                for (int t = 0; t < 3; t++)
-                {
-                    _nodeTriangle[t] = triangles[j + t];
-                }
+                int _vertexA = triangles[i][j];
+                int _vertexB = triangles[i][j + 1];
+                int _vertexC = triangles[i][j + 2];
 
-                bool _vertexPresented = false;
-                for (int t = 0; t < 3; t++)
+                //add to A
+                vertexNodes[_vertexA].connectedVertices.Add(_vertexB);
+                vertexNodes[_vertexA].connectedVertices.Add(_vertexC);
+                //add to B
+                vertexNodes[_vertexB].connectedVertices.Add(_vertexC);
+                vertexNodes[_vertexB].connectedVertices.Add(_vertexA);
+                //add to C
+                vertexNodes[_vertexC].connectedVertices.Add(_vertexA);
+                vertexNodes[_vertexC].connectedVertices.Add(_vertexB);
+            }
+        }
+        //add double vertices as connected
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            for (int j = 0; j < vertices.Count; j++)
+            {
+                if (i != j)
                 {
-                    if (_nodeTriangle[t].vertexID == triangles[i].vertexID)
+                    if (vertices[i] == vertices[j])
                     {
-                        _vertexPresented = true;
-                        break;
-                    }
-                }
-                if (_vertexPresented)
-                {
-                    for (int t = 0; t < 3; t++)
-                    {
-                        if (_nodeTriangle[t].vertexID != triangles[i].vertexID)
-                        {
-                            if (!triangles[i].connectedVertices.Contains(_nodeTriangle[t]))
-                            {
-                                triangles[i].connectedVertices.Add(_nodeTriangle[t]);
-                            }
-                        }
+                        vertexNodes[i].doubledVertices.Add(j);
+                        vertexNodes[j].doubledVertices.Add(i);
                     }
                 }
             }
@@ -89,15 +71,14 @@ public class MeshTriangleGraph
 public class VertexNode
 {
     public int vertexID;
-    public List<int> subMeshIndexes;
 
-    public List<VertexNode> connectedVertices;
+    public List<int> connectedVertices;
+    public List<int> doubledVertices;
 
-    public VertexNode(int vertexID, int subMeshIndex)
+    public VertexNode(int vertexID)
     {
         this.vertexID = vertexID;
-        subMeshIndexes = new List<int>();
-        subMeshIndexes.Add(subMeshIndex);
-        connectedVertices = new List<VertexNode>();
+        connectedVertices = new List<int>();
+        doubledVertices = new List<int>();
     }
 }
