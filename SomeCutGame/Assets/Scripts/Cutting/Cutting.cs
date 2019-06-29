@@ -12,10 +12,10 @@ public class Cutting : MonoBehaviour
     }
     public void OnCollisionEnter(Collision other)
     {
-        CuttableGraph _cuttableObject = other.gameObject.GetComponent<CuttableGraph>();
+        Cuttable _cuttableObject = other.gameObject.GetComponent<Cuttable>();
         if (_cuttableObject != null && !_justCut)
         {
-            _cuttableObject.CutAsync(transform.position, transform.up);
+            _cuttableObject.Cut(transform.position, transform.up);
             StartCoroutine(Reset());
         }
     }
