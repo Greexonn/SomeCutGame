@@ -31,6 +31,9 @@ public class Cuttable : MonoBehaviour
     private Vector3 _cuttingPlaneNormal;
     private Vector3 _cuttingPlaneCenter;
 
+    //
+    private bool _isPreSet = false;
+
     void Start()
     {
         //
@@ -38,18 +41,28 @@ public class Cuttable : MonoBehaviour
         _mesh = _meshFilter.mesh;
 
         //
-        _originalGeneratedMesh = new GeneratedMesh("original");
-        for (int i = 0; i < _mesh.vertexCount; i++)
+        if (!_isPreSet)
         {
-            _originalGeneratedMesh.vertices.Add(new float3(_mesh.vertices[i].x, _mesh.vertices[i].y, _mesh.vertices[i].z));
-            _originalGeneratedMesh.normals.Add(new float3(_mesh.normals[i].x, _mesh.normals[i].y, _mesh.normals[i].z));
-            _originalGeneratedMesh.uvs.Add(new float2(_mesh.uv[i].x, _mesh.uv[i].y));
+            _originalGeneratedMesh = new GeneratedMesh("original");
+            for (int i = 0; i < _mesh.vertexCount; i++)
+            {
+                _originalGeneratedMesh.vertices.Add(new float3(_mesh.vertices[i].x, _mesh.vertices[i].y, _mesh.vertices[i].z));
+                _originalGeneratedMesh.normals.Add(new float3(_mesh.normals[i].x, _mesh.normals[i].y, _mesh.normals[i].z));
+                _originalGeneratedMesh.uvs.Add(new float2(_mesh.uv[i].x, _mesh.uv[i].y));
+            }
+            
+            for (int i = 0; i < _mesh.triangles.Length; i++)
+            {
+                _originalGeneratedMesh.triangles.Add(_mesh.triangles[i]);
+            }
         }
-        
-        for (int i = 0; i < _mesh.triangles.Length; i++)
-        {
-            _originalGeneratedMesh.triangles.Add(_mesh.triangles[i]);
-        }
+    }
+
+    public void SetGeneratedMesh(GeneratedMesh generatedMesh)
+    {
+        _isPreSet = true;
+
+        _originalGeneratedMesh = generatedMesh;
     }
 
     void OnDestroy()
@@ -199,9 +212,12 @@ public class Cuttable : MonoBehaviour
         {
             _createdMeshes.Add(genMesh.GetMesh());
         }
-
+        
         //change mesh on current object
         _meshFilter.mesh = _createdMeshes[0];
+        //reset current original mesh
+        _originalGeneratedMesh.Dispose();
+        _originalGeneratedMesh = _leftPart;
         //set materials
         List<Material> _materials = new List<Material>(gameObject.GetComponent<MeshRenderer>().materials);
         if (cutMaterial != null)
@@ -213,23 +229,26 @@ public class Cuttable : MonoBehaviour
         gameObject.AddComponent<MeshCollider>().convex = true;
         gameObject.AddComponent<Rigidbody>();
         _createdMeshes.Remove(_createdMeshes[0]);
+        _generatedMeshes.Remove(_generatedMeshes[0]);
 
         //create new objects
-        foreach (var createdMesh in _createdMeshes)
+        for (int i = 0; i < _createdMeshes.Count; i++)
         {
             GameObject _part = new GameObject(gameObject.name + "_part");
+
             _part.transform.SetPositionAndRotation(transform.position, transform.rotation);
             MeshFilter _partMeshFilter = _part.AddComponent<MeshFilter>();
-            _partMeshFilter.mesh = createdMesh;
+            _partMeshFilter.mesh = _createdMeshes[i];
             MeshRenderer _partRenderer = _part.AddComponent<MeshRenderer>();
             //set materials
             _partRenderer.materials = _materials.ToArray();
 
             _part.AddComponent<MeshCollider>().convex = true;
             Rigidbody _partRigidbody = _part.AddComponent<Rigidbody>();
-
+            
             //
             Cuttable _partCuttableComponent = _part.AddComponent<Cuttable>();
+            _partCuttableComponent.SetGeneratedMesh(_generatedMeshes[i]);
             _partCuttableComponent.cutMaterial = _materials[_materials.Count - 1];
         }
     }
