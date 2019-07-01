@@ -13,6 +13,7 @@ public class Cuttable : MonoBehaviour
 
     private MeshFilter _meshFilter;
     private Mesh _mesh;
+    private int _subMeshCount;
 
 
     private GeneratedMesh _leftPart;
@@ -39,21 +40,27 @@ public class Cuttable : MonoBehaviour
         //
         _meshFilter = GetComponent<MeshFilter>();
         _mesh = _meshFilter.mesh;
+        _subMeshCount = _mesh.subMeshCount;
 
         //
         if (!_isPreSet)
         {
-            _originalGeneratedMesh = new GeneratedMesh("original");
+            _originalGeneratedMesh = new GeneratedMesh("original", _subMeshCount);
+            //copy vertices, normals, uvs
             for (int i = 0; i < _mesh.vertexCount; i++)
             {
                 _originalGeneratedMesh.vertices.Add(new float3(_mesh.vertices[i].x, _mesh.vertices[i].y, _mesh.vertices[i].z));
                 _originalGeneratedMesh.normals.Add(new float3(_mesh.normals[i].x, _mesh.normals[i].y, _mesh.normals[i].z));
                 _originalGeneratedMesh.uvs.Add(new float2(_mesh.uv[i].x, _mesh.uv[i].y));
             }
-            
-            for (int i = 0; i < _mesh.triangles.Length; i++)
+            //copy triangles
+            for (int i = 0; i < _subMeshCount; i++)
             {
-                _originalGeneratedMesh.triangles.Add(_mesh.triangles[i]);
+                int[] _subTriangles = _mesh.GetTriangles(i);
+                for (int j = 0; j < _subTriangles.Length; j++)
+                {
+                    _originalGeneratedMesh.triangles[i].Add(_subTriangles[j]);
+                }
             }
         }
     }
@@ -68,8 +75,6 @@ public class Cuttable : MonoBehaviour
     void OnDestroy()
     {
         _originalGeneratedMesh.Dispose();
-        _leftPart.Dispose();
-        _rightPart.Dispose();
     }
 
     public void Cut(Vector3 contactPoint, Vector3 planeNormal)
@@ -83,8 +88,8 @@ public class Cuttable : MonoBehaviour
         _createdMeshes = new List<Mesh>();
 
         //create mesh containers
-        _leftPart = new GeneratedMesh("left");
-        _rightPart = new GeneratedMesh("right");
+        _leftPart = new GeneratedMesh("left", _subMeshCount);
+        _rightPart = new GeneratedMesh("right", _subMeshCount);
         _generatedMeshes = new List<GeneratedMesh>();
 
         //perform cut
@@ -118,7 +123,7 @@ public class Cuttable : MonoBehaviour
             rightSide = _dataRight.ToConcurrent()
         };
 
-        _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10)).Complete();
+        _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10 + 1)).Complete();
 
         //make hash-maps for triangle indexes and mesh data
         NativeHashMap<int, int> _originalIndexToLeft = new NativeHashMap<int, int>(_dataLeft.Count, Allocator.TempJob);
@@ -141,56 +146,73 @@ public class Cuttable : MonoBehaviour
         _setMeshAndHashMaps.Schedule().Complete();
 
         //check triangles
-        NativeArray<int> _triangleTypes = new NativeArray<int>((_originalGeneratedMesh.triangles.Length / 3), Allocator.TempJob);
-
-        CheckTrianglesParallelJob _checkTrianglesParallelJob = new CheckTrianglesParallelJob
+        NativeArray<int>[] _triangleTypes = new NativeArray<int>[_subMeshCount];
+        for (int i = 0; i < _subMeshCount; i++)
         {
-            sideIDs = _sideIds,
-            triangleIndexes = _originalGeneratedMesh.triangles.AsDeferredJobArray(),
-            triangleTypes = _triangleTypes,
-        };
+            _triangleTypes[i] = new NativeArray<int>(_originalGeneratedMesh.triangles[i].Length / 3, Allocator.TempJob);
 
-        _checkTrianglesParallelJob.Schedule(_triangleTypes.Length, 100).Complete();
+            CheckTrianglesParallelJob _checkTrianglesParallelJob = new CheckTrianglesParallelJob
+            {
+                sideIDs = _sideIds,
+                triangleIndexes = _originalGeneratedMesh.triangles[i].AsArray(),
+                triangleTypes = _triangleTypes[i]
+            };
+
+            _checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1).Complete();
+        }
 
         //reassign triangles
         //allocate indexes queue
-        NativeQueue<int> _triangleIndexesLeft = new NativeQueue<int>(Allocator.TempJob);
-        NativeQueue<int> _triangleIndexesRight = new NativeQueue<int>(Allocator.TempJob);
+        NativeQueue<int>[] _triangleIndexesLeft = new NativeQueue<int>[_subMeshCount];
+        NativeQueue<int>[] _triangleIndexesRight = new NativeQueue<int>[_subMeshCount];
 
-        ReassignTrianglesJob _reassignTrianglesJob = new ReassignTrianglesJob
+        for (int i = 0; i < _subMeshCount; i++)
         {
-            triangleIndexes = _originalGeneratedMesh.triangles.AsDeferredJobArray(),
-            triangleTypes = _triangleTypes,
-            leftTriangleIndexes = _triangleIndexesLeft.ToConcurrent(),
-            rightTriangleIndexes = _triangleIndexesRight.ToConcurrent(),
-            originalIndexesToLeft = _originalIndexToLeft,
-            originalIndexesToRight = _originalIndexToRight
-        };
+            _triangleIndexesLeft[i] = new NativeQueue<int>(Allocator.TempJob);
+            _triangleIndexesRight[i] = new NativeQueue<int>(Allocator.TempJob);
 
-        _reassignTrianglesJob.Schedule(_triangleTypes.Length, (_triangleTypes.Length / 10)).Complete();
+            ReassignTrianglesJob _reassignTrianglesJob = new ReassignTrianglesJob
+            {
+                triangleIndexes = _originalGeneratedMesh.triangles[i].AsArray(),
+                triangleTypes = _triangleTypes[i],
+                leftTriangleIndexes = _triangleIndexesLeft[i].ToConcurrent(),
+                rightTriangleIndexes = _triangleIndexesRight[i].ToConcurrent(),
+                originalIndexesToLeft = _originalIndexToLeft,
+                originalIndexesToRight = _originalIndexToRight
+            };
+            
+            //schedule job
+            _reassignTrianglesJob.Schedule(_triangleTypes[i].Length, (_triangleTypes[i].Length / 10 + 1)).Complete();
+        }
 
         //assign triangles to mesh
-        AssignDataToMeshJob _assignDataToMeshJob = new AssignDataToMeshJob
+        for (int i = 0; i < _subMeshCount; i++)
         {
-            triangleIndexesLeft = _triangleIndexesLeft,
-            triangleIndexesRight = _triangleIndexesRight,
-            meshTrianglesLeft = _leftPart.triangles,
-            meshTrianglesRight = _rightPart.triangles
-        };
+            AssignDataToMeshJob _assignDataToMeshJob = new AssignDataToMeshJob
+            {
+                triangleIndexesLeft = _triangleIndexesLeft[i],
+                triangleIndexesRight = _triangleIndexesRight[i],
+                meshTrianglesLeft = _leftPart.triangles[i],
+                meshTrianglesRight = _rightPart.triangles[i]
+            };
 
-        _assignDataToMeshJob.Schedule().Complete();
+            _assignDataToMeshJob.Schedule().Complete();
+        }
 
         //dispose arrays
         _sideIds.Dispose();
-        _triangleTypes.Dispose();
         _dataLeft.Dispose();
         _dataRight.Dispose();
 
         _originalIndexToLeft.Dispose();
         _originalIndexToRight.Dispose();
 
-        _triangleIndexesLeft.Dispose();
-        _triangleIndexesRight.Dispose();
+        for (int i = 0; i < _subMeshCount; i++)
+        {
+            _triangleTypes[i].Dispose();
+            _triangleIndexesLeft[i].Dispose();
+            _triangleIndexesRight[i].Dispose();
+        }
     }
 
     private void FillCut()
@@ -215,6 +237,7 @@ public class Cuttable : MonoBehaviour
         
         //change mesh on current object
         _meshFilter.mesh = _createdMeshes[0];
+        
         //reset current original mesh
         _originalGeneratedMesh.Dispose();
         _originalGeneratedMesh = _leftPart;
@@ -258,17 +281,21 @@ public class Cuttable : MonoBehaviour
         public NativeList<float3> vertices;
         public NativeList<float3> normals;
         public NativeList<float2> uvs;
-        public NativeList<int> triangles;
+        public NativeList<int>[] triangles;
 
         //
         public NativeList<float3> edgeVertices;
 
-        public GeneratedMesh(string meshName)
+        public GeneratedMesh(string meshName, int subMeshCount)
         {
             vertices = new NativeList<float3>(Allocator.Persistent);
             normals = new NativeList<float3>(Allocator.Persistent);
             uvs = new NativeList<float2>(Allocator.Persistent);
-            triangles = new NativeList<int>(Allocator.Persistent);
+            triangles = new NativeList<int>[subMeshCount];
+            for (int i = 0; i < subMeshCount; i++)
+            {
+                triangles[i] = new NativeList<int>(Allocator.Persistent);
+            }
             edgeVertices = new NativeList<float3>(Allocator.Persistent);
         }
 
@@ -277,7 +304,10 @@ public class Cuttable : MonoBehaviour
             vertices.Dispose();
             normals.Dispose();
             uvs.Dispose();
-            triangles.Dispose();
+            for (int i = 0; i < triangles.Length; i++)
+            {
+                triangles[i].Dispose();
+            }
             edgeVertices.Dispose();
         }
 
@@ -295,14 +325,17 @@ public class Cuttable : MonoBehaviour
                 _normals[i] = new Vector3(normals[i].x, normals[i].y, normals[i].z);
                 _uvs[i] = new Vector2(uvs[i].x, uvs[i].y);
             }
-            for (int i = 0; i < triangles.Length; i++)
-            {
-                _triangles[i] = triangles[i];
-            }
+
             _mesh.vertices = _vertices;
             _mesh.normals = _normals;
             _mesh.uv = _uvs;
-            _mesh.triangles = _triangles;
+            _mesh.subMeshCount = triangles.Length;
+            
+            //set triangles
+            for (int i = 0; i < triangles.Length; i++)
+            {
+                _mesh.SetTriangles(triangles[i].ToArray(), i);
+            }
 
             return _mesh;
         }
