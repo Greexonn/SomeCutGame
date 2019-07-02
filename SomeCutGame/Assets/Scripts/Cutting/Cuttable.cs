@@ -27,6 +27,21 @@ public class Cuttable : MonoBehaviour
 
     //native 
     private NativeArray<int> _sideIds;
+    private NativeQueue<VertexInfo> _dataLeft;
+    private NativeQueue<VertexInfo> _dataRight;
+
+    private NativeHashMap<int, int> _originalIndexToLeft;
+    private NativeHashMap<int, int> _originalIndexToRight;
+
+    private NativeArray<int>[] _triangleTypes;
+    private NativeQueue<int>[] _triangleIndexesLeft;
+    private NativeQueue<int>[] _triangleIndexesRight;
+
+    private NativeQueue<int>[] _originalIntersectingTriangles;
+    private NativeQueue<VertexInfo> _addedVerticesLeft;
+    private NativeQueue<VertexInfo> _addedVerticesRight;
+    private NativeQueue<int> _addedTrianglesLeft;
+    private NativeQueue<int> _addedTrianglesRight;
 
     //
     private Vector3 _cuttingPlaneNormal;
@@ -47,11 +62,15 @@ public class Cuttable : MonoBehaviour
         {
             _originalGeneratedMesh = new GeneratedMesh("original", _subMeshCount);
             //copy vertices, normals, uvs
+            var _verts = _mesh.vertices;
+            var _norms = _mesh.normals;
+            var _uvs = _mesh.uv;
+            
             for (int i = 0; i < _mesh.vertexCount; i++)
             {
-                _originalGeneratedMesh.vertices.Add(new float3(_mesh.vertices[i].x, _mesh.vertices[i].y, _mesh.vertices[i].z));
-                _originalGeneratedMesh.normals.Add(new float3(_mesh.normals[i].x, _mesh.normals[i].y, _mesh.normals[i].z));
-                _originalGeneratedMesh.uvs.Add(new float2(_mesh.uv[i].x, _mesh.uv[i].y));
+                _originalGeneratedMesh.vertices.Add(new float3(_verts[i].x, _verts[i].y, _verts[i].z));
+                _originalGeneratedMesh.normals.Add(new float3(_norms[i].x,_norms[i].y, _norms[i].z));
+                _originalGeneratedMesh.uvs.Add(new float2(_uvs[i].x, _uvs[i].y));
             }
             //copy triangles
             for (int i = 0; i < _subMeshCount; i++)
@@ -93,22 +112,50 @@ public class Cuttable : MonoBehaviour
         _generatedMeshes = new List<GeneratedMesh>();
 
         //perform cut
+        AllocateTemporalContainers();
+        //
         SplitMesh();
         FillCut();
         FillHoles();
+        //
+        DisposeTemporalContainers();
 
         //create new parts
         CreateNewObjects();
+    }
+
+    private void AllocateTemporalContainers()
+    {
+        _dataLeft = new NativeQueue<VertexInfo>(Allocator.TempJob);
+        _dataRight = new NativeQueue<VertexInfo>(Allocator.TempJob);
+               
+        _originalIndexToLeft = new NativeHashMap<int, int>(_dataLeft.Count, Allocator.TempJob);
+        _originalIndexToRight = new NativeHashMap<int, int>(_dataRight.Count, Allocator.TempJob);
+
+
+    }
+
+    private void DisposeTemporalContainers()
+    {
+        _sideIds.Dispose();
+        _dataLeft.Dispose();
+        _dataRight.Dispose();
+
+        _originalIndexToLeft.Dispose();
+        _originalIndexToRight.Dispose();
+
+        for (int i = 0; i < _subMeshCount; i++)
+        {
+            _triangleTypes[i].Dispose();
+            _triangleIndexesLeft[i].Dispose();
+            _triangleIndexesRight[i].Dispose();
+        }
     }
 
     private void SplitMesh()
     {
         int _verticesCount = _originalGeneratedMesh.vertices.Length;
         _sideIds = new NativeArray<int>(_verticesCount, Allocator.TempJob);
-
-        //allocate temporal vertexinfo queue
-        NativeQueue<VertexInfo> _dataLeft = new NativeQueue<VertexInfo>(Allocator.TempJob);
-        NativeQueue<VertexInfo> _dataRight = new NativeQueue<VertexInfo>(Allocator.TempJob);        
 
         //get all vertices sides
         GetVertexesSideJob _getVertexesSideJob = new GetVertexesSideJob
@@ -126,9 +173,6 @@ public class Cuttable : MonoBehaviour
         _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10 + 1)).Complete();
 
         //make hash-maps for triangle indexes and mesh data
-        NativeHashMap<int, int> _originalIndexToLeft = new NativeHashMap<int, int>(_dataLeft.Count, Allocator.TempJob);
-        NativeHashMap<int, int> _originalIndexToRight = new NativeHashMap<int, int>(_dataRight.Count, Allocator.TempJob);
-
         SetMehsDataAndHashMapsJob _setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
         {
             leftSideData = _dataLeft,
@@ -146,7 +190,7 @@ public class Cuttable : MonoBehaviour
         _setMeshAndHashMaps.Schedule().Complete();
 
         //check triangles
-        NativeArray<int>[] _triangleTypes = new NativeArray<int>[_subMeshCount];
+        _triangleTypes = new NativeArray<int>[_subMeshCount];
         for (int i = 0; i < _subMeshCount; i++)
         {
             _triangleTypes[i] = new NativeArray<int>(_originalGeneratedMesh.triangles[i].Length / 3, Allocator.TempJob);
@@ -163,8 +207,8 @@ public class Cuttable : MonoBehaviour
 
         //reassign triangles
         //allocate indexes queue
-        NativeQueue<int>[] _triangleIndexesLeft = new NativeQueue<int>[_subMeshCount];
-        NativeQueue<int>[] _triangleIndexesRight = new NativeQueue<int>[_subMeshCount];
+        _triangleIndexesLeft = new NativeQueue<int>[_subMeshCount];
+        _triangleIndexesRight = new NativeQueue<int>[_subMeshCount];
 
         for (int i = 0; i < _subMeshCount; i++)
         {
@@ -197,21 +241,6 @@ public class Cuttable : MonoBehaviour
             };
 
             _assignDataToMeshJob.Schedule().Complete();
-        }
-
-        //dispose arrays
-        _sideIds.Dispose();
-        _dataLeft.Dispose();
-        _dataRight.Dispose();
-
-        _originalIndexToLeft.Dispose();
-        _originalIndexToRight.Dispose();
-
-        for (int i = 0; i < _subMeshCount; i++)
-        {
-            _triangleTypes[i].Dispose();
-            _triangleIndexesLeft[i].Dispose();
-            _triangleIndexesRight[i].Dispose();
         }
     }
 
