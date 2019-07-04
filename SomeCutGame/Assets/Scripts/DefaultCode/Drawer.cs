@@ -1,15 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class Drawer : MonoBehaviour
 {
-    public int maxCount;
-
-    public int currentVertex;
-
-    public int layer;
-    public MeshFilter _mesh;
+    public Cuttable cuttableObject;
 
     private List<Vector3> _vertices = new List<Vector3>();
     private List<int> _triangles = new List<int>();
@@ -22,30 +16,23 @@ public class Drawer : MonoBehaviour
 
     void Update()
     {
-        if (_mesh != null)
+        if (cuttableObject != null)
         {
-            if (transform.parent != _mesh.transform)
+            if (transform.parent != cuttableObject.transform)
             {
-                transform.parent = _mesh.transform;
+                transform.parent = cuttableObject.transform;
                 transform.localPosition = Vector3.zero;
                 transform.localEulerAngles = Vector3.zero;
             }
 
-            _mesh.mesh.GetVertices(_vertices);
-            _triangles.Clear();
-            _triangles.AddRange(_mesh.mesh.GetTriangles(layer));
+            _vertices = cuttableObject.edgeVertices;
 
-            _line.positionCount = maxCount;
+            _line.positionCount = _vertices.Count;
 
             int _counter = 0;
-            foreach (var vertex in _triangles)
+            foreach (var vertex in _vertices)
             {
-                if(_counter >= maxCount)
-                {
-                    currentVertex = vertex;
-                    return;
-                }
-                _line.SetPosition(_counter++, _vertices[vertex]);
+                _line.SetPosition(_counter++, vertex);
             }
         }
     }
