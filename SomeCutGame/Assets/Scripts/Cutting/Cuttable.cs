@@ -188,22 +188,33 @@ public class Cuttable : MonoBehaviour
 
         _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10 + 1)).Complete();
 
+        //allocate array per job handles to use jobs in parallel
+        NativeArray<JobHandle> _handleArray = new NativeArray<JobHandle>(2, Allocator.Temp);
+
         //make hash-maps for triangle indexes and mesh data
         SetMehsDataAndHashMapsJob _setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
         {
-            leftSideData = _dataLeft,
-            rightSideData = _dataRight,
-            verticesLeftSide = _leftPart.vertices,
-            verticesRightSide = _rightPart.vertices,
-            normalsLeftSide = _leftPart.normals,
-            normalsRightSide = _rightPart.normals,
-            uvsLeftSide = _leftPart.uvs,
-            uvsRightSide = _rightPart.uvs,
-            originalIndexesToLeft = _originalIndexToLeft,
-            originalIndexesToRight = _originalIndexToRight
+            sideData = _dataLeft,
+            verticesSide = _leftPart.vertices,
+            normalsSide = _leftPart.normals,
+            uvsSide = _leftPart.uvs,
+            originalIndexesToSide = _originalIndexToLeft
         };
 
-        _setMeshAndHashMaps.Schedule().Complete();
+        _handleArray[0] = _setMeshAndHashMaps.Schedule();
+
+        _setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
+        {
+            sideData = _dataRight,
+            verticesSide = _rightPart.vertices,
+            normalsSide = _rightPart.normals,
+            uvsSide = _rightPart.uvs,
+            originalIndexesToSide = _originalIndexToRight
+        };
+
+        _handleArray[1] = _setMeshAndHashMaps.Schedule();
+
+        JobHandle.CompleteAll(_handleArray);
 
         //check triangles
         _triangleTypes = new NativeArray<int>[_subMeshCount];
@@ -251,16 +262,27 @@ public class Cuttable : MonoBehaviour
         //assign triangles to mesh
         for (int i = 0; i < _subMeshCount; i++)
         {
-            CopyTrianglesDataJob _assignDataToMeshJob = new CopyTrianglesDataJob
+            CopyTrianglesToListJob _assignTriangles = new CopyTrianglesToListJob
             {
-                triangleIndexesLeft = _triangleIndexesLeft[i],
-                triangleIndexesRight = _triangleIndexesRight[i],
-                meshTrianglesLeft = _leftPart.triangles[i],
-                meshTrianglesRight = _rightPart.triangles[i]
+                triangleIndexes = _triangleIndexesLeft[i],
+                listTriangles = _leftPart.triangles[i]
             };
 
-            _assignDataToMeshJob.Schedule().Complete();
+            _handleArray[0] = _assignTriangles.Schedule();
+
+            _assignTriangles = new CopyTrianglesToListJob
+            {
+                triangleIndexes = _triangleIndexesRight[i],
+                listTriangles = _rightPart.triangles[i]
+            };
+
+            _handleArray[1] = _assignTriangles.Schedule();
+
+            JobHandle.CompleteAll(_handleArray);
         }
+
+        //dispose job handle array
+        _handleArray.Dispose();
     }
 
     private void FillCutEdge()
@@ -307,6 +329,9 @@ public class Cuttable : MonoBehaviour
             _cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, (_originalIntersectingTrianglesList[i].Length / 3 / 10 + 1)).Complete();
         }
 
+        //allocate array per job handles to use jobs in parallel
+        NativeArray<JobHandle> _handleArray = new NativeArray<JobHandle>(2, Allocator.Temp);
+
         //add new vertices and fill hash-maps
         _edgeVerticesToLeft = new NativeHashMap<float3, int>[_subMeshCount];
         _edgeVerticesToRight = new NativeHashMap<float3, int>[_subMeshCount];
@@ -315,29 +340,33 @@ public class Cuttable : MonoBehaviour
             _edgeVerticesToLeft[i] = new NativeHashMap<float3, int>(_edgeVertices[i].Length, Allocator.TempJob);
             _edgeVerticesToRight[i] = new NativeHashMap<float3, int>(_edgeVertices[i].Length, Allocator.TempJob);
 
+            NativeArray<VertexInfo> _edgeVerticesArray = _edgeVertices[i].GetValueArray(Allocator.TempJob);
+
             AddEdgeVerticesJob _addEdgeVertices = new AddEdgeVerticesJob
             {
-                edgeVertices = _edgeVertices[i].GetValueArray(Allocator.TempJob),
+                edgeVertices = _edgeVerticesArray,
                 sideVertices = _leftPart.vertices,
                 sideNormals = _leftPart.normals,
                 sideUVs = _leftPart.uvs,
                 edgeVerticesToSide = _edgeVerticesToLeft[i]
             };
 
-            _addEdgeVertices.Schedule().Complete();
+            _handleArray[0] = _addEdgeVertices.Schedule();
 
-            _addEdgeVertices.edgeVertices.Dispose();
             _addEdgeVertices = new AddEdgeVerticesJob
             {
-                edgeVertices = _edgeVertices[i].GetValueArray(Allocator.TempJob),
+                edgeVertices = _edgeVerticesArray,
                 sideVertices = _rightPart.vertices,
                 sideNormals = _rightPart.normals,
                 sideUVs = _rightPart.uvs,
                 edgeVerticesToSide = _edgeVerticesToRight[i]
             };
 
-            _addEdgeVertices.Schedule().Complete();
-            _addEdgeVertices.edgeVertices.Dispose();
+            _handleArray[1] = _addEdgeVertices.Schedule();
+
+            JobHandle.CompleteAll(_handleArray);
+
+            _edgeVerticesArray.Dispose();
         }
 
         //add new triangles
@@ -351,7 +380,7 @@ public class Cuttable : MonoBehaviour
                 halfNewTriangles = _halfNewTrianglesLeft[i]
             };
 
-            _addEdgeTriangles.Schedule().Complete();
+            _handleArray[0] = _addEdgeTriangles.Schedule();
 
             _addEdgeTriangles = new AddEdgeTrianglesJob
             {
@@ -361,8 +390,13 @@ public class Cuttable : MonoBehaviour
                 halfNewTriangles = _halfNewTrianglesRight[i]
             };
 
-            _addEdgeTriangles.Schedule().Complete();
+            _handleArray[1] = _addEdgeTriangles.Schedule();
+
+            JobHandle.CompleteAll(_handleArray);
         }
+
+        //dispose job hsndle array
+        _handleArray.Dispose();
     }
 
     private void FillHoles()
@@ -553,30 +587,21 @@ public class Cuttable : MonoBehaviour
     [BurstCompile]
     public struct SetMehsDataAndHashMapsJob : IJob
     {
-        public NativeQueue<VertexInfo> leftSideData, rightSideData;
-        [WriteOnly] public NativeHashMap<int, int> originalIndexesToLeft, originalIndexesToRight;
-        [WriteOnly] public NativeList<float3> verticesLeftSide, verticesRightSide, normalsLeftSide, normalsRightSide;
-        [WriteOnly] public NativeList<float2> uvsLeftSide, uvsRightSide;
+        public NativeQueue<VertexInfo> sideData;
+        [WriteOnly] public NativeHashMap<int, int> originalIndexesToSide;
+        [WriteOnly] public NativeList<float3> verticesSide, normalsSide;
+        [WriteOnly] public NativeList<float2> uvsSide;
 
         public void Execute()
         {
             int _counter = 0;
-            while (leftSideData.Count > 0)
+            while (sideData.Count > 0)
             {
-                var _data = leftSideData.Dequeue();
-                originalIndexesToLeft.TryAdd(_data.originalIndex, _counter++);
-                verticesLeftSide.Add(_data.vertex);
-                normalsLeftSide.Add(_data.normal);
-                uvsLeftSide.Add(_data.uv);
-            }
-            _counter = 0;
-            while (rightSideData.Count > 0)
-            {
-                var _data = rightSideData.Dequeue();
-                originalIndexesToRight.TryAdd(_data.originalIndex, _counter++);
-                verticesRightSide.Add(_data.vertex);
-                normalsRightSide.Add(_data.normal);
-                uvsRightSide.Add(_data.uv);
+                var _data = sideData.Dequeue();
+                originalIndexesToSide.TryAdd(_data.originalIndex, _counter++);
+                verticesSide.Add(_data.vertex);
+                normalsSide.Add(_data.normal);
+                uvsSide.Add(_data.uv);
             }
         }
     }
@@ -650,25 +675,6 @@ public class Cuttable : MonoBehaviour
                     intersectingTriangleIndexes.Enqueue(_vertexC);
                     break;
                 }
-            }
-        }
-    }
-
-    [BurstCompile]
-    public struct CopyTrianglesDataJob : IJob
-    {
-        public NativeQueue<int> triangleIndexesLeft, triangleIndexesRight;
-        [WriteOnly] public NativeList<int> meshTrianglesLeft, meshTrianglesRight;
-
-        public void Execute()
-        {
-            while (triangleIndexesLeft.Count > 0)
-            {
-                meshTrianglesLeft.Add(triangleIndexesLeft.Dequeue());
-            }
-            while (triangleIndexesRight.Count > 0)
-            {
-                meshTrianglesRight.Add(triangleIndexesRight.Dequeue());
             }
         }
     }
