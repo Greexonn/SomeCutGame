@@ -39,8 +39,9 @@ public class Cuttable : MonoBehaviour
 
     private NativeQueue<int>[] _originalIntersectingTriangles;
     private NativeList<int>[] _originalIntersectingTrianglesList;
-    private NativeQueue<VertexInfo> _addedVerticesLeft;
-    private NativeQueue<VertexInfo> _addedVerticesRight;
+    private NativeHashMap<float3, VertexInfo>[] _edgeVertices;
+    private NativeHashMap<float3, int>[] _edgeVerticesToLeft, _edgeVerticesToRight;
+    private NativeQueue<HalfNewTriangle>[] _halfNewTrianglesLeft, _halfNewTrianglesRight;
     private NativeQueue<int> _addedTrianglesLeft;
     private NativeQueue<int> _addedTrianglesRight;
 
@@ -136,8 +137,6 @@ public class Cuttable : MonoBehaviour
         _originalIndexToLeft = new NativeHashMap<int, int>(_dataLeft.Count, Allocator.TempJob);
         _originalIndexToRight = new NativeHashMap<int, int>(_dataRight.Count, Allocator.TempJob);
 
-        _addedVerticesLeft = new NativeQueue<VertexInfo>(Allocator.TempJob);
-        _addedVerticesRight = new NativeQueue<VertexInfo>(Allocator.TempJob);
         _addedTrianglesLeft = new NativeQueue<int>(Allocator.TempJob);
         _addedTrianglesRight = new NativeQueue<int>(Allocator.TempJob);
     }
@@ -151,8 +150,6 @@ public class Cuttable : MonoBehaviour
         _originalIndexToLeft.Dispose();
         _originalIndexToRight.Dispose();
 
-        _addedVerticesLeft.Dispose();
-        _addedVerticesRight.Dispose();
         _addedTrianglesLeft.Dispose();
         _addedTrianglesRight.Dispose();
 
@@ -163,6 +160,11 @@ public class Cuttable : MonoBehaviour
             _triangleIndexesRight[i].Dispose();
             _originalIntersectingTriangles[i].Dispose();
             _originalIntersectingTrianglesList[i].Dispose();
+            _edgeVertices[i].Dispose();
+            _edgeVerticesToLeft[i].Dispose();
+            _edgeVerticesToRight[i].Dispose();
+            _halfNewTrianglesLeft[i].Dispose();
+            _halfNewTrianglesRight[i].Dispose();
         }
     }
 
@@ -278,9 +280,16 @@ public class Cuttable : MonoBehaviour
             _copyTrianglesToList.Schedule().Complete();
         }
 
-        //iterate throuhg all intersected triangles in every sub-mesh
+        //iterate throuhg all intersected triangles in every sub-mesh, add edge vertices and half-new triangles
+        _edgeVertices = new NativeHashMap<float3, VertexInfo>[_subMeshCount];
+        _halfNewTrianglesLeft = new NativeQueue<HalfNewTriangle>[_subMeshCount];
+        _halfNewTrianglesRight = new NativeQueue<HalfNewTriangle>[_subMeshCount];
         for (int i = 0; i < _subMeshCount; i++)
         {
+            _edgeVertices[i] = new NativeHashMap<float3, VertexInfo>((_originalIntersectingTrianglesList[i].Length), Allocator.TempJob);
+            _halfNewTrianglesLeft[i] = new NativeQueue<HalfNewTriangle>(Allocator.TempJob);
+            _halfNewTrianglesRight[i] = new NativeQueue<HalfNewTriangle>(Allocator.TempJob);
+
             CutTrianglesParallelJob _cutTriangles = new CutTrianglesParallelJob
             {
                 planeCenter = new float3(_cuttingPlaneCenter.x, _cuttingPlaneCenter.y, _cuttingPlaneCenter.z),
@@ -290,23 +299,70 @@ public class Cuttable : MonoBehaviour
                 uvs = _originalGeneratedMesh.uvs,
                 triangles = _originalIntersectingTrianglesList[i].AsArray(),
                 sideIDs = _sideIds,
-                edgeVerticesLeft = _addedVerticesLeft.ToConcurrent(),
-                edgeVerticesRight = _addedVerticesRight.ToConcurrent()
+                edgeVertices = _edgeVertices[i].ToConcurrent(),
+                leftHalfTriangles = _halfNewTrianglesLeft[i].ToConcurrent(),
+                rightHalfTriangles = _halfNewTrianglesRight[i].ToConcurrent()
             };
 
             _cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, (_originalIntersectingTrianglesList[i].Length / 3 / 10 + 1)).Complete();
         }
 
-        edgeVertices = new List<Vector3>();
-
-        //copy vertices to debug list
-        while (_addedVerticesLeft.Count > 0)
+        //add new vertices and fill hash-maps
+        _edgeVerticesToLeft = new NativeHashMap<float3, int>[_subMeshCount];
+        _edgeVerticesToRight = new NativeHashMap<float3, int>[_subMeshCount];
+        for (int i = 0; i < _subMeshCount; i++)
         {
-            var _vertex = _addedVerticesLeft.Dequeue();
-            edgeVertices.Add(new Vector3(_vertex.vertex.x, _vertex.vertex.y, _vertex.vertex.z));
+            _edgeVerticesToLeft[i] = new NativeHashMap<float3, int>(_edgeVertices[i].Length, Allocator.TempJob);
+            _edgeVerticesToRight[i] = new NativeHashMap<float3, int>(_edgeVertices[i].Length, Allocator.TempJob);
+
+            AddEdgeVerticesJob _addEdgeVertices = new AddEdgeVerticesJob
+            {
+                edgeVertices = _edgeVertices[i].GetValueArray(Allocator.TempJob),
+                sideVertices = _leftPart.vertices,
+                sideNormals = _leftPart.normals,
+                sideUVs = _leftPart.uvs,
+                edgeVerticesToSide = _edgeVerticesToLeft[i]
+            };
+
+            _addEdgeVertices.Schedule().Complete();
+
+            _addEdgeVertices.edgeVertices.Dispose();
+            _addEdgeVertices = new AddEdgeVerticesJob
+            {
+                edgeVertices = _edgeVertices[i].GetValueArray(Allocator.TempJob),
+                sideVertices = _rightPart.vertices,
+                sideNormals = _rightPart.normals,
+                sideUVs = _rightPart.uvs,
+                edgeVerticesToSide = _edgeVerticesToRight[i]
+            };
+
+            _addEdgeVertices.Schedule().Complete();
+            _addEdgeVertices.edgeVertices.Dispose();
         }
 
-        print(edgeVertices.Count);
+        //add new triangles
+        for (int i = 0; i < _subMeshCount; i++)
+        {
+            AddEdgeTrianglesJob _addEdgeTriangles = new AddEdgeTrianglesJob
+            {
+                sideTriangles = _leftPart.triangles[i],
+                originalIndexesToSide = _originalIndexToLeft,
+                vertexToSide = _edgeVerticesToLeft[i],
+                halfNewTriangles = _halfNewTrianglesLeft[i]
+            };
+
+            _addEdgeTriangles.Schedule().Complete();
+
+            _addEdgeTriangles = new AddEdgeTrianglesJob
+            {
+                sideTriangles = _rightPart.triangles[i],
+                originalIndexesToSide = _originalIndexToRight,
+                vertexToSide = _edgeVerticesToRight[i],
+                halfNewTriangles = _halfNewTrianglesRight[i]
+            };
+
+            _addEdgeTriangles.Schedule().Complete();
+        }
     }
 
     private void FillHoles()
@@ -339,7 +395,7 @@ public class Cuttable : MonoBehaviour
         gameObject.GetComponent<MeshRenderer>().materials = _materials.ToArray();
         Destroy(GetComponent<Collider>());
         gameObject.AddComponent<MeshCollider>().convex = true;
-        gameObject.AddComponent<Rigidbody>().ResetCenterOfMass();
+        gameObject.AddComponent<Rigidbody>();
         _createdMeshes.Remove(_createdMeshes[0]);
         _generatedMeshes.Remove(_generatedMeshes[0]);
 
@@ -357,7 +413,6 @@ public class Cuttable : MonoBehaviour
 
             _part.AddComponent<MeshCollider>().convex = true;
             Rigidbody _partRigidbody = _part.AddComponent<Rigidbody>();
-            _partRigidbody.ResetCenterOfMass();
             
             //
             Cuttable _partCuttableComponent = _part.AddComponent<Cuttable>();
@@ -437,6 +492,14 @@ public class Cuttable : MonoBehaviour
         public float3 vertex;
         public float3 normal;
         public float2 uv;
+
+        public bool Empty()
+        {
+            if (originalIndex == -1)
+                return true;
+
+            return false;
+        }
     }
 
     //
@@ -617,6 +680,17 @@ public class Cuttable : MonoBehaviour
     //
     #region CutTrianglesJobs
 
+    public struct Edge
+    {
+        public int a, b;
+    }
+
+    public struct HalfNewTriangle
+    {
+        public int a, b;
+        public VertexInfo c, d;
+    }
+
     [BurstCompile]
     public struct CutTrianglesParallelJob : IJobParallelFor
     {
@@ -625,7 +699,8 @@ public class Cuttable : MonoBehaviour
         [ReadOnly] public NativeArray<float2> uvs;
         [ReadOnly] public NativeArray<int> triangles, sideIDs;
 
-        [WriteOnly] public NativeQueue<VertexInfo>.Concurrent edgeVerticesLeft, edgeVerticesRight;
+        [WriteOnly] public NativeHashMap<float3, VertexInfo>.Concurrent edgeVertices;
+        [WriteOnly] public NativeQueue<HalfNewTriangle>.Concurrent leftHalfTriangles, rightHalfTriangles;
 
         public void Execute(int index)
         {
@@ -634,39 +709,105 @@ public class Cuttable : MonoBehaviour
             int _vertexB = triangles[_currentStartIndex + 1];
             int _vertexC = triangles[_currentStartIndex + 2];
 
-            //check every edge
+            //create edges
+            Edge _ab = new Edge{a = _vertexA, b = _vertexB};
+            Edge _bc = new Edge{a = _vertexB, b = _vertexC};
+            Edge _ca = new Edge{a = _vertexC, b = _vertexA};
+
+            //check every edge to find one that is not intersected
             //check a-b
-            if (sideIDs[_vertexA] != sideIDs[_vertexB])
+            if (sideIDs[_ab.a] == sideIDs[_ab.b])
             {
-                VertexInfo _newVertex = GetNewVertex(_vertexA, _vertexB);
-                edgeVerticesLeft.Enqueue(_newVertex);
-                edgeVerticesRight.Enqueue(_newVertex);
+                CutTriangle(_ab, _bc, _ca);
             }
             //check b-c
-            if (sideIDs[_vertexB] != sideIDs[_vertexC])
+            if (sideIDs[_bc.a] == sideIDs[_bc.b])
             {
-                VertexInfo _newVertex = GetNewVertex(_vertexB, _vertexC);
-                edgeVerticesLeft.Enqueue(_newVertex);
-                edgeVerticesRight.Enqueue(_newVertex);
+                CutTriangle(_bc, _ca, _ab);
             }
             //check c-a
-            if (sideIDs[_vertexC] != sideIDs[_vertexA])
+            if (sideIDs[_ca.a] == sideIDs[_ca.b])
             {
-                VertexInfo _newVertex = GetNewVertex(_vertexC, _vertexA);
-                edgeVerticesLeft.Enqueue(_newVertex);
-                edgeVerticesRight.Enqueue(_newVertex);
+                CutTriangle(_ca, _ab, _bc);
             }
         }
 
-        private VertexInfo GetNewVertex(int vertexA, int vertexB)
+        private void CutTriangle(Edge solidEdge, Edge firstIntersected, Edge secondIntersected)
+        {
+            VertexInfo _newVertexOne = GetNewVertex(firstIntersected);
+            VertexInfo _newVertexTwo = GetNewVertex(secondIntersected);
+
+            //add vertices
+            edgeVertices.TryAdd(_newVertexOne.vertex, _newVertexOne);
+            edgeVertices.TryAdd(_newVertexTwo.vertex, _newVertexTwo);
+
+            //create half-new triangles
+            switch (sideIDs[solidEdge.a])
+            {
+                case -1:
+                {
+                    //base on right side
+                    rightHalfTriangles.Enqueue(new HalfNewTriangle
+                    {
+                        a = solidEdge.a,
+                        b = solidEdge.b,
+                        c = _newVertexOne,
+                        d = new VertexInfo{originalIndex = -1}
+                    });
+                    rightHalfTriangles.Enqueue(new HalfNewTriangle
+                    {
+                        a = solidEdge.a,
+                        b = -1,
+                        c = _newVertexOne,
+                        d = _newVertexTwo
+                    });
+                    leftHalfTriangles.Enqueue(new HalfNewTriangle
+                    {
+                        a = firstIntersected.b,
+                        b = -1,
+                        c = _newVertexTwo,
+                        d = _newVertexOne
+                    });
+                    break;
+                }
+                default:
+                {
+                    //base on left side
+                    leftHalfTriangles.Enqueue(new HalfNewTriangle
+                    {
+                        a = solidEdge.a,
+                        b = solidEdge.b,
+                        c = _newVertexOne,
+                        d = new VertexInfo{originalIndex = -1}
+                    });
+                    leftHalfTriangles.Enqueue(new HalfNewTriangle
+                    {
+                        a = solidEdge.a,
+                        b = -1,
+                        c = _newVertexOne,
+                        d = _newVertexTwo
+                    });
+                    rightHalfTriangles.Enqueue(new HalfNewTriangle
+                    {
+                        a = firstIntersected.b,
+                        b = -1,
+                        c = _newVertexTwo,
+                        d = _newVertexOne
+                    });
+                    break;
+                }
+            }
+        }
+
+        private VertexInfo GetNewVertex(Edge edge)
         {
             VertexInfo _newVertex = new VertexInfo();
 
-            float _relation = FindIntersectionPosOnSegment(vertices[vertexA], vertices[vertexB]);
+            float _relation = FindIntersectionPosOnSegment(vertices[edge.a], vertices[edge.b]);
 
-            _newVertex.vertex = math.lerp(vertices[vertexA], vertices[vertexB], _relation);
-            _newVertex.normal = math.lerp(normals[vertexA], normals[vertexB], _relation);
-            _newVertex.uv = math.lerp(uvs[vertexA], uvs[vertexB], _relation);
+            _newVertex.vertex = math.lerp(vertices[edge.a], vertices[edge.b], _relation);
+            _newVertex.normal = math.lerp(normals[edge.a], normals[edge.b], _relation);
+            _newVertex.uv = math.lerp(uvs[edge.a], uvs[edge.b], _relation);
 
             return _newVertex;
         }
@@ -696,6 +837,61 @@ public class Cuttable : MonoBehaviour
             while (triangleIndexes.Count > 0)
             {
                 listTriangles.Add(triangleIndexes.Dequeue());
+            }
+        }
+    }
+
+    [BurstCompile]
+    public struct AddEdgeVerticesJob : IJob
+    {
+        [ReadOnly] public NativeArray<VertexInfo> edgeVertices;
+
+        public NativeList<float3> sideVertices, sideNormals;
+        public NativeList<float2> sideUVs;
+
+        [WriteOnly] public NativeHashMap<float3, int> edgeVerticesToSide;
+
+        public void Execute()
+        {
+            for (int i = 0; i < edgeVertices.Length; i++)
+            {
+                //add to hash-map
+                edgeVerticesToSide.TryAdd(edgeVertices[i].vertex, sideVertices.Length);
+
+                //add vertex info
+                sideVertices.Add(edgeVertices[i].vertex);
+                sideNormals.Add(edgeVertices[i].normal);
+                sideUVs.Add(edgeVertices[i].uv);
+            }
+        }
+    }
+
+    [BurstCompile]
+    public struct AddEdgeTrianglesJob : IJob
+    {
+        [WriteOnly] public NativeList<int> sideTriangles;
+
+        [ReadOnly] public NativeHashMap<int, int> originalIndexesToSide;
+        [ReadOnly] public NativeHashMap<float3, int> vertexToSide;
+
+        public NativeQueue<HalfNewTriangle> halfNewTriangles;
+
+        public void Execute()
+        {
+            while (halfNewTriangles.Count > 0)
+            {
+                HalfNewTriangle _hnTriangle = halfNewTriangles.Dequeue();
+
+                sideTriangles.Add(originalIndexesToSide[_hnTriangle.a]);
+                if (_hnTriangle.b != -1)
+                {
+                    sideTriangles.Add(originalIndexesToSide[_hnTriangle.b]);
+                }
+                sideTriangles.Add(vertexToSide[_hnTriangle.c.vertex]);
+                if (!_hnTriangle.d.Empty())
+                {
+                    sideTriangles.Add(vertexToSide[_hnTriangle.d.vertex]);
+                }
             }
         }
     }
