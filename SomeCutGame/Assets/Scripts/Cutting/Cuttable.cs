@@ -44,6 +44,10 @@ public class Cuttable : MonoBehaviour
     private NativeQueue<HalfNewTriangle>[] _halfNewTrianglesLeft, _halfNewTrianglesRight;
     private NativeQueue<int> _addedTrianglesLeft;
     private NativeQueue<int> _addedTrianglesRight;
+    private NativeArray<VertexInfo>[] _edgeVerticesArray;
+
+    //job handle collections
+        NativeList<JobHandle> _handles, _dependencies;
 
     //
     private Vector3 _cuttingPlaneNormal;
@@ -139,6 +143,10 @@ public class Cuttable : MonoBehaviour
 
         _addedTrianglesLeft = new NativeQueue<int>(Allocator.TempJob);
         _addedTrianglesRight = new NativeQueue<int>(Allocator.TempJob);
+
+        //allocate job handle lists
+        _handles = new NativeList<JobHandle>(Allocator.Temp);
+        _dependencies = new NativeList<JobHandle>(Allocator.Temp);
     }
 
     private void DisposeTemporalContainers()
@@ -165,7 +173,12 @@ public class Cuttable : MonoBehaviour
             _edgeVerticesToRight[i].Dispose();
             _halfNewTrianglesLeft[i].Dispose();
             _halfNewTrianglesRight[i].Dispose();
+            _edgeVerticesArray[i].Dispose();
         }
+
+        //dispose job handle lists
+        _handles.Dispose();
+        _dependencies.Dispose();
     }
 
     private void SplitMesh()
@@ -186,10 +199,8 @@ public class Cuttable : MonoBehaviour
             rightSide = _dataRight.ToConcurrent()
         };
 
-        _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10 + 1)).Complete();
-
-        //allocate array per job handles to use jobs in parallel
-        NativeArray<JobHandle> _handleArray = new NativeArray<JobHandle>(2, Allocator.Temp);
+        JobHandle _getVertexesSideJobHandle = _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10 + 1));
+        _handles.Add(_getVertexesSideJobHandle);
 
         //make hash-maps for triangle indexes and mesh data
         SetMehsDataAndHashMapsJob _setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
@@ -201,7 +212,7 @@ public class Cuttable : MonoBehaviour
             originalIndexesToSide = _originalIndexToLeft
         };
 
-        _handleArray[0] = _setMeshAndHashMaps.Schedule();
+        _handles.Add(_setMeshAndHashMaps.Schedule(_getVertexesSideJobHandle));
 
         _setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
         {
@@ -212,11 +223,10 @@ public class Cuttable : MonoBehaviour
             originalIndexesToSide = _originalIndexToRight
         };
 
-        _handleArray[1] = _setMeshAndHashMaps.Schedule();
-
-        JobHandle.CompleteAll(_handleArray);
+        _handles.Add(_setMeshAndHashMaps.Schedule(_getVertexesSideJobHandle));
 
         //check triangles
+        JobHandle _dependency = JobHandle.CombineDependencies(_handles[_handles.Length - 1], _handles[_handles.Length - 2]);
         _triangleTypes = new NativeArray<int>[_subMeshCount];
         for (int i = 0; i < _subMeshCount; i++)
         {
@@ -229,7 +239,8 @@ public class Cuttable : MonoBehaviour
                 triangleTypes = _triangleTypes[i]
             };
 
-            _checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1).Complete();
+            _handles.Add(_checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, _dependency));
+            _dependencies.Add(_handles[_handles.Length - 1]);
         }
 
         //reassign triangles
@@ -256,9 +267,13 @@ public class Cuttable : MonoBehaviour
             };
             
             //schedule job
-            _reassignTrianglesJob.Schedule(_triangleTypes[i].Length, (_triangleTypes[i].Length / 10 + 1)).Complete();
+            _handles.Add(_reassignTrianglesJob.Schedule(_triangleTypes[i].Length, (_triangleTypes[i].Length / 10 + 1), _dependencies[i]));
+            _dependencies[i] = _handles[_handles.Length - 1];
         }
 
+        NativeList<JobHandle> _localDependencies = new NativeList<JobHandle>(Allocator.Persistent);
+        _localDependencies.AddRange(_dependencies.AsArray());
+        _dependencies.Clear();
         //assign triangles to mesh
         for (int i = 0; i < _subMeshCount; i++)
         {
@@ -268,7 +283,8 @@ public class Cuttable : MonoBehaviour
                 listTriangles = _leftPart.triangles[i]
             };
 
-            _handleArray[0] = _assignTriangles.Schedule();
+            _handles.Add(_assignTriangles.Schedule(_localDependencies[i]));
+            _dependencies.Add(_handles[_handles.Length - 1]);
 
             _assignTriangles = new CopyTrianglesToListJob
             {
@@ -276,17 +292,17 @@ public class Cuttable : MonoBehaviour
                 listTriangles = _rightPart.triangles[i]
             };
 
-            _handleArray[1] = _assignTriangles.Schedule();
-
-            JobHandle.CompleteAll(_handleArray);
+            _handles.Add(_assignTriangles.Schedule(_localDependencies[i]));
+            _dependencies.Add(_handles[_handles.Length - 1]);
         }
-
-        //dispose job handle array
-        _handleArray.Dispose();
+        _localDependencies.Dispose();
     }
 
     private void FillCutEdge()
     {
+        JobHandle _previousCombined = JobHandle.CombineDependencies(_dependencies);
+        _dependencies.Clear();
+
         _originalIntersectingTrianglesList = new NativeList<int>[_subMeshCount];
         //copy intersected triangles to list so we can iterate in parallel
         for (int i = 0; i < _subMeshCount; i++)
@@ -299,8 +315,13 @@ public class Cuttable : MonoBehaviour
                 listTriangles = _originalIntersectingTrianglesList[i]
             };
 
-            _copyTrianglesToList.Schedule().Complete();
+            _handles.Add(_copyTrianglesToList.Schedule(_previousCombined));
+            _dependencies.Add(_handles[_handles.Length - 1]);
         }
+
+        //can't schedule next job instantly cause it needs intersected triangles count
+        JobHandle.CompleteAll(_handles);
+        _handles.Clear();
 
         //iterate throuhg all intersected triangles in every sub-mesh, add edge vertices and half-new triangles
         _edgeVertices = new NativeHashMap<float3, VertexInfo>[_subMeshCount];
@@ -308,7 +329,7 @@ public class Cuttable : MonoBehaviour
         _halfNewTrianglesRight = new NativeQueue<HalfNewTriangle>[_subMeshCount];
         for (int i = 0; i < _subMeshCount; i++)
         {
-            _edgeVertices[i] = new NativeHashMap<float3, VertexInfo>((_originalIntersectingTrianglesList[i].Length), Allocator.TempJob);
+            _edgeVertices[i] = new NativeHashMap<float3, VertexInfo>((_originalIntersectingTrianglesList[i].Length * 2 / 3), Allocator.TempJob);
             _halfNewTrianglesLeft[i] = new NativeQueue<HalfNewTriangle>(Allocator.TempJob);
             _halfNewTrianglesRight[i] = new NativeQueue<HalfNewTriangle>(Allocator.TempJob);
 
@@ -319,56 +340,58 @@ public class Cuttable : MonoBehaviour
                 vertices = _originalGeneratedMesh.vertices,
                 normals = _originalGeneratedMesh.normals,
                 uvs = _originalGeneratedMesh.uvs,
-                triangles = _originalIntersectingTrianglesList[i].AsArray(),
+                triangles = _originalIntersectingTrianglesList[i],
                 sideIDs = _sideIds,
                 edgeVertices = _edgeVertices[i].ToConcurrent(),
                 leftHalfTriangles = _halfNewTrianglesLeft[i].ToConcurrent(),
                 rightHalfTriangles = _halfNewTrianglesRight[i].ToConcurrent()
             };
 
-            _cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, (_originalIntersectingTrianglesList[i].Length / 3 / 10 + 1)).Complete();
+            _handles.Add(_cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, (_originalIntersectingTrianglesList[i].Length / 3 / 10 + 1), _dependencies[i]));
+            _dependencies[i] = _handles[_handles.Length - 1];
         }
 
-        //allocate array per job handles to use jobs in parallel
-        NativeArray<JobHandle> _handleArray = new NativeArray<JobHandle>(2, Allocator.Temp);
+        JobHandle.CompleteAll(_handles);
+        _handles.Clear();
 
         //add new vertices and fill hash-maps
         _edgeVerticesToLeft = new NativeHashMap<float3, int>[_subMeshCount];
         _edgeVerticesToRight = new NativeHashMap<float3, int>[_subMeshCount];
+        _edgeVerticesArray = new NativeArray<VertexInfo>[_subMeshCount];
+        JobHandle _previousHandle = _dependencies[0];
         for (int i = 0; i < _subMeshCount; i++)
         {
             _edgeVerticesToLeft[i] = new NativeHashMap<float3, int>(_edgeVertices[i].Length, Allocator.TempJob);
             _edgeVerticesToRight[i] = new NativeHashMap<float3, int>(_edgeVertices[i].Length, Allocator.TempJob);
 
-            NativeArray<VertexInfo> _edgeVerticesArray = _edgeVertices[i].GetValueArray(Allocator.TempJob);
+            _edgeVerticesArray[i] = _edgeVertices[i].GetValueArray(Allocator.TempJob);
 
             AddEdgeVerticesJob _addEdgeVertices = new AddEdgeVerticesJob
             {
-                edgeVertices = _edgeVerticesArray,
+                edgeVertices = _edgeVerticesArray[i],
                 sideVertices = _leftPart.vertices,
                 sideNormals = _leftPart.normals,
                 sideUVs = _leftPart.uvs,
                 edgeVerticesToSide = _edgeVerticesToLeft[i]
             };
 
-            _handleArray[0] = _addEdgeVertices.Schedule();
+            _handles.Add(_addEdgeVertices.Schedule(_previousHandle));
 
             _addEdgeVertices = new AddEdgeVerticesJob
             {
-                edgeVertices = _edgeVerticesArray,
+                edgeVertices = _edgeVerticesArray[i],
                 sideVertices = _rightPart.vertices,
                 sideNormals = _rightPart.normals,
                 sideUVs = _rightPart.uvs,
                 edgeVerticesToSide = _edgeVerticesToRight[i]
             };
 
-            _handleArray[1] = _addEdgeVertices.Schedule();
+            _handles.Add(_addEdgeVertices.Schedule(_previousHandle));
 
-            JobHandle.CompleteAll(_handleArray);
-
-            _edgeVerticesArray.Dispose();
+            _dependencies[i] = JobHandle.CombineDependencies(_handles[_handles.Length - 1], _handles[_handles.Length - 2]);
+            _previousHandle = _dependencies[i];
         }
-
+            
         //add new triangles
         for (int i = 0; i < _subMeshCount; i++)
         {
@@ -380,7 +403,7 @@ public class Cuttable : MonoBehaviour
                 halfNewTriangles = _halfNewTrianglesLeft[i]
             };
 
-            _handleArray[0] = _addEdgeTriangles.Schedule();
+            _handles.Add(_addEdgeTriangles.Schedule(_dependencies[i]));
 
             _addEdgeTriangles = new AddEdgeTrianglesJob
             {
@@ -390,13 +413,12 @@ public class Cuttable : MonoBehaviour
                 halfNewTriangles = _halfNewTrianglesRight[i]
             };
 
-            _handleArray[1] = _addEdgeTriangles.Schedule();
-
-            JobHandle.CompleteAll(_handleArray);
+            _handles.Add(_addEdgeTriangles.Schedule(_dependencies[i]));
+            
+            _dependencies[i] = JobHandle.CombineDependencies(_handles[_handles.Length - 1], _handles[_handles.Length - 2]);
         }
 
-        //dispose job hsndle array
-        _handleArray.Dispose();
+        JobHandle.CompleteAll(_handles);
     }
 
     private void FillHoles()
@@ -703,7 +725,8 @@ public class Cuttable : MonoBehaviour
         [ReadOnly] public float3 planeCenter, planeNormal;
         [ReadOnly] public NativeArray<float3> vertices, normals;
         [ReadOnly] public NativeArray<float2> uvs;
-        [ReadOnly] public NativeArray<int> triangles, sideIDs;
+        [ReadOnly] public NativeList<int> triangles;
+        [ReadOnly] public NativeArray<int> sideIDs;
 
         [WriteOnly] public NativeHashMap<float3, VertexInfo>.Concurrent edgeVertices;
         [WriteOnly] public NativeQueue<HalfNewTriangle>.Concurrent leftHalfTriangles, rightHalfTriangles;
