@@ -516,6 +516,12 @@ public class Cuttable : MonoBehaviour
         {
             Mesh _mesh = new Mesh();
 
+            //set 32bit index format if needed
+            if (vertices.Length > 65535)
+            {
+                _mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            }
+
             Vector3[] _vertices = new Vector3[vertices.Length];
             Vector3[] _normals = new Vector3[normals.Length];
             Vector2[] _uvs = new Vector2[uvs.Length];
