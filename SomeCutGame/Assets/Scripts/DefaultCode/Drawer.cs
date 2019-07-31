@@ -25,8 +25,6 @@ public class Drawer : MonoBehaviour
                 transform.localEulerAngles = Vector3.zero;
             }
 
-            _vertices = cuttableObject.edgeVertices;
-
             _line.positionCount = _vertices.Count;
 
             int _counter = 0;

@@ -56,9 +56,6 @@ public class Cuttable : MonoBehaviour
     //
     private bool _isPreSet = false;
 
-    //debug
-    public List<Vector3> edgeVertices;
-
     void Start()
     {
         //
@@ -195,8 +192,8 @@ public class Cuttable : MonoBehaviour
             normals = _originalGeneratedMesh.normals.AsArray(),
             uvs = _originalGeneratedMesh.uvs.AsArray(),
             sideIds = _sideIds,
-            leftSide = _dataLeft.ToConcurrent(),
-            rightSide = _dataRight.ToConcurrent()
+            leftSide = _dataLeft.AsParallelWriter(),
+            rightSide = _dataRight.AsParallelWriter()
         };
 
         JobHandle _getVertexesSideJobHandle = _getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (_verticesCount / 10 + 1));
@@ -259,9 +256,9 @@ public class Cuttable : MonoBehaviour
             {
                 triangleIndexes = _originalGeneratedMesh.triangles[i].AsArray(),
                 triangleTypes = _triangleTypes[i],
-                leftTriangleIndexes = _triangleIndexesLeft[i].ToConcurrent(),
-                rightTriangleIndexes = _triangleIndexesRight[i].ToConcurrent(),
-                intersectingTriangleIndexes = _originalIntersectingTriangles[i].ToConcurrent(),
+                leftTriangleIndexes = _triangleIndexesLeft[i].AsParallelWriter(),
+                rightTriangleIndexes = _triangleIndexesRight[i].AsParallelWriter(),
+                intersectingTriangleIndexes = _originalIntersectingTriangles[i].AsParallelWriter(),
                 originalIndexesToLeft = _originalIndexToLeft,
                 originalIndexesToRight = _originalIndexToRight
             };
@@ -342,9 +339,9 @@ public class Cuttable : MonoBehaviour
                 uvs = _originalGeneratedMesh.uvs,
                 triangles = _originalIntersectingTrianglesList[i],
                 sideIDs = _sideIds,
-                edgeVertices = _edgeVertices[i].ToConcurrent(),
-                leftHalfTriangles = _halfNewTrianglesLeft[i].ToConcurrent(),
-                rightHalfTriangles = _halfNewTrianglesRight[i].ToConcurrent()
+                edgeVertices = _edgeVertices[i].AsParallelWriter(),
+                leftHalfTriangles = _halfNewTrianglesLeft[i].AsParallelWriter(),
+                rightHalfTriangles = _halfNewTrianglesRight[i].AsParallelWriter()
             };
 
             _handles.Add(_cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, (_originalIntersectingTrianglesList[i].Length / 3 / 10 + 1), _dependencies[i]));
@@ -451,7 +448,12 @@ public class Cuttable : MonoBehaviour
         gameObject.GetComponent<MeshRenderer>().materials = _materials.ToArray();
         Destroy(GetComponent<Collider>());
         gameObject.AddComponent<MeshCollider>().convex = true;
-        gameObject.AddComponent<Rigidbody>();
+        Rigidbody _currentRB = gameObject.GetComponent<Rigidbody>();
+        if (_currentRB == null)
+        {
+            _currentRB = gameObject.AddComponent<Rigidbody>();
+        }
+        _currentRB.ResetCenterOfMass();
         _createdMeshes.Remove(_createdMeshes[0]);
         _generatedMeshes.Remove(_generatedMeshes[0]);
 
@@ -578,7 +580,7 @@ public class Cuttable : MonoBehaviour
         [ReadOnly] public NativeArray<float3> normals;
         [ReadOnly] public NativeArray<float2> uvs; 
         [WriteOnly] public NativeArray<int> sideIds;
-        [WriteOnly] public NativeQueue<VertexInfo>.Concurrent leftSide, rightSide;
+        [WriteOnly] public NativeQueue<VertexInfo>.ParallelWriter leftSide, rightSide;
         public void Execute(int index)
         {
             float3 _localPos = vertices[index] - planeCenter;
@@ -667,7 +669,7 @@ public class Cuttable : MonoBehaviour
         [ReadOnly] public NativeArray<int> triangleIndexes;
         [ReadOnly] public NativeArray<int> triangleTypes;
 
-        [WriteOnly] public NativeQueue<int>.Concurrent leftTriangleIndexes, rightTriangleIndexes, intersectingTriangleIndexes;
+        [WriteOnly] public NativeQueue<int>.ParallelWriter leftTriangleIndexes, rightTriangleIndexes, intersectingTriangleIndexes;
 
         public void Execute(int index)
         {
@@ -734,8 +736,8 @@ public class Cuttable : MonoBehaviour
         [ReadOnly] public NativeList<int> triangles;
         [ReadOnly] public NativeArray<int> sideIDs;
 
-        [WriteOnly] public NativeHashMap<float3, VertexInfo>.Concurrent edgeVertices;
-        [WriteOnly] public NativeQueue<HalfNewTriangle>.Concurrent leftHalfTriangles, rightHalfTriangles;
+        [WriteOnly] public NativeHashMap<float3, VertexInfo>.ParallelWriter edgeVertices;
+        [WriteOnly] public NativeQueue<HalfNewTriangle>.ParallelWriter leftHalfTriangles, rightHalfTriangles;
 
         public void Execute(int index)
         {
