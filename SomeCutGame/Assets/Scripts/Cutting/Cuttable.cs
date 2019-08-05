@@ -46,12 +46,19 @@ public class Cuttable : MonoBehaviour
     private NativeQueue<int> _addedTrianglesRight;
     private NativeArray<VertexInfo>[] _edgeVerticesArray;
 
+    private NativeArray<float2>[] _edgeVerticesOnPlane;
+
     //job handle collections
         NativeList<JobHandle> _handles, _dependencies;
 
     //
     private Vector3 _cuttingPlaneNormal;
     private Vector3 _cuttingPlaneCenter;
+
+    private float3 _planeCenter;
+    private float3 _planeNormal;
+    private float3 _planeXAxis;
+    private float3 _planeYAxis;
 
     //
     private bool _isPreSet = false;
@@ -74,9 +81,9 @@ public class Cuttable : MonoBehaviour
             
             for (int i = 0; i < _mesh.vertexCount; i++)
             {
-                _originalGeneratedMesh.vertices.Add(new float3(_verts[i].x, _verts[i].y, _verts[i].z));
-                _originalGeneratedMesh.normals.Add(new float3(_norms[i].x,_norms[i].y, _norms[i].z));
-                _originalGeneratedMesh.uvs.Add(new float2(_uvs[i].x, _uvs[i].y));
+                _originalGeneratedMesh.vertices.Add(new float3(_verts[i]));
+                _originalGeneratedMesh.normals.Add(new float3(_norms[i]));
+                _originalGeneratedMesh.uvs.Add(new float2(_uvs[i]));
             }
             //copy triangles
             for (int i = 0; i < _subMeshCount; i++)
@@ -102,12 +109,16 @@ public class Cuttable : MonoBehaviour
         _originalGeneratedMesh.Dispose();
     }
 
-    public void Cut(Vector3 contactPoint, Vector3 planeNormal)
+    public void Cut(Vector3 contactPoint, Vector3 planeNormal, Vector3 planeUp, Vector3 planeLeft)
     {
         //create cutting plane
         _cuttingPlane = new Plane(transform.InverseTransformDirection(planeNormal), transform.InverseTransformPoint(contactPoint));
         _cuttingPlaneNormal = _cuttingPlane.normal;
         _cuttingPlaneCenter = transform.InverseTransformPoint(contactPoint);
+        _planeCenter = new float3(_cuttingPlaneCenter);
+        _planeNormal = new float3(_cuttingPlaneNormal);
+        _planeXAxis = new float3(transform.InverseTransformDirection(planeUp));
+        _planeYAxis = new float3(transform.InverseTransformDirection(planeLeft));
 
         //create new meshes
         _createdMeshes = new List<Mesh>();
@@ -171,6 +182,7 @@ public class Cuttable : MonoBehaviour
             _halfNewTrianglesLeft[i].Dispose();
             _halfNewTrianglesRight[i].Dispose();
             _edgeVerticesArray[i].Dispose();
+            _edgeVerticesOnPlane[i].Dispose();
         }
 
         //dispose job handle lists
@@ -420,7 +432,27 @@ public class Cuttable : MonoBehaviour
 
     private void FillHoles()
     {
+        _handles.Clear();
 
+        //translate vertices coordinates to plane coordinates
+        _edgeVerticesOnPlane = new NativeArray<float2>[_subMeshCount];
+        for (int i = 0; i < _subMeshCount; i++)
+        {
+            _edgeVerticesOnPlane[i] = new NativeArray<float2>(_edgeVerticesArray[i].Length, Allocator.TempJob);
+
+            TranslateCoordinatesToPlaneParallelJob _translateCoordinates = new TranslateCoordinatesToPlaneParallelJob
+            {
+                planeXAxis = _planeXAxis,
+                planeYAxis = _planeYAxis,
+                edgeVertices = _edgeVerticesArray[i],
+                edgeVerticesOnPlane = _edgeVerticesOnPlane[i]
+            };
+
+            _handles.Add(_translateCoordinates.Schedule(_edgeVerticesArray[i].Length, (_edgeVerticesArray[i].Length / 10 + 1)));
+            _dependencies[i] = _handles[_handles.Length - 1];
+        }
+
+        JobHandle.CompleteAll(_handles);
     }
 
     private void CreateNewObjects()
@@ -930,6 +962,31 @@ public class Cuttable : MonoBehaviour
                     sideTriangles.Add(vertexToSide[_hnTriangle.d.vertex]);
                 }
             }
+        }
+    }
+
+    #endregion
+
+    //
+    //fill holes
+    //
+    #region FillHolesJobs
+
+    [BurstCompile]
+    public struct TranslateCoordinatesToPlaneParallelJob : IJobParallelFor
+    {
+        [ReadOnly] public float3 planeXAxis;
+        [ReadOnly] public float3 planeYAxis;
+
+        [ReadOnly] public NativeArray<VertexInfo> edgeVertices;
+        [WriteOnly] public NativeArray<float2> edgeVerticesOnPlane;
+
+        public void Execute(int index)
+        {
+            float _x = math.dot(planeXAxis, edgeVertices[index].vertex);
+            float _y = math.dot(planeYAxis, edgeVertices[index].vertex);
+
+            edgeVerticesOnPlane[index] = new float2(_x, _y);
         }
     }
 

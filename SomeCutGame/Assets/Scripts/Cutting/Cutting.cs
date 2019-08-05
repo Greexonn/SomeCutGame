@@ -14,7 +14,7 @@ public class Cutting : MonoBehaviour
         Cuttable _cuttableObject = other.gameObject.GetComponent<Cuttable>();
         if (_cuttableObject != null && !_justCut)
         {
-            _cuttableObject.Cut(transform.position, transform.up);
+            _cuttableObject.Cut(transform.position, transform.up, transform.right, transform.forward);
             StartCoroutine(Reset());
         }
     }
