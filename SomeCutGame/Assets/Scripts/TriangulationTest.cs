@@ -147,6 +147,7 @@ public class TriangulationTest : MonoBehaviour
                 if (_onDoubles)
                 {
                     _edgesLeftDoubles.Remove(earTip);
+                    _edgesLeftDoubles.TryAdd(earTip, _vertRight);
                 }
                 else
                 {
@@ -169,8 +170,16 @@ public class TriangulationTest : MonoBehaviour
             }
             else if (_vertInner == _edgesRight[_vertRight])
             {
+                if (_onDoubles)
+                {
+                    _edgesRightDoubles.Remove(earTip);
+                    _edgesRightDoubles.TryAdd(earTip, _vertRight);
+                }
+                else
+                {
+                    _edgesRight.Remove(earTip);
+                }
                 //remove edges
-                _edgesRight.Remove(earTip);
                 _edgesLeft.Remove(_vertRight);
                 _edgesRight.Remove(_vertRight);
                 //add edges
@@ -268,8 +277,16 @@ public class TriangulationTest : MonoBehaviour
             //look if vertex is already connected to other vertices (no double edges)
             if (_vertInner == _edgesLeft[vertLeft])
             {
+                if (_onDoubles)
+                {
+                    _edgesLeftDoubles.Remove(earTip);
+                    _edgesLeftDoubles.TryAdd(earTip, vertRight);
+                }
+                else
+                {
+                    _edgesLeft.Remove(earTip);
+                }
                 //remove edges
-                _edgesLeft.Remove(earTip);
                 _edgesRight.Remove(vertLeft);
                 _edgesLeft.Remove(vertLeft);
                 //add edges
@@ -287,8 +304,16 @@ public class TriangulationTest : MonoBehaviour
             }
             else if (_vertInner == _edgesRight[vertRight])
             {
+                if (_onDoubles)
+                {
+                    _edgesRightDoubles.Remove(earTip);
+                    _edgesRightDoubles.TryAdd(earTip, vertRight);
+                }
+                else
+                {
+                    _edgesRight.Remove(earTip);
+                }
                 //remove edges
-                _edgesRight.Remove(earTip);
                 _edgesLeft.Remove(vertRight);
                 _edgesRight.Remove(vertRight);
                 //add edges
@@ -313,24 +338,24 @@ public class TriangulationTest : MonoBehaviour
         }
         else
         {
-            if (_onDoubles)
-            {
-
-            }
-            else
-            {
-                
-            }
             //add doubles
             _edgesLeftDoubles.TryAdd(vertRight, vertLeft);
             _edgesRightDoubles.TryAdd(vertRight, _edgesRight[vertRight]);
             //remove edges
-            _edgesLeft.Remove(earTip);
+            if (_onDoubles)
+            {
+                _edgesLeftDoubles.Remove(earTip);
+                _edgesLeftDoubles.TryAdd(earTip, vertRight);
+            }
+            else
+            {
+                _edgesLeft.Remove(earTip);
+                _edgesLeft.TryAdd(earTip, vertRight);
+            }
             _edgesRight.Remove(vertLeft);
             _edgesRight.Remove(vertRight);
-            //edd edges
+            //add edges
             _edgesRight.TryAdd(vertRight, earTip);
-            _edgesLeft.TryAdd(earTip, vertRight);
             _edgesRight.TryAdd(vertLeft, vertRight);
         }
     }
