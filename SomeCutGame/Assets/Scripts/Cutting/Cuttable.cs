@@ -939,16 +939,21 @@ public class Cuttable : MonoBehaviour
     public struct AddEdgeTrianglesJob : IJob
     {
         [WriteOnly] public NativeList<int> sideTriangles;
+        // [WriteOnly] public NativeHashMap<int, int> edgesToLeft, edgesToRight;
 
         [ReadOnly] public NativeHashMap<int, int> originalIndexesToSide;
         [ReadOnly] public NativeHashMap<float3, int> vertexToSide;
 
         public NativeQueue<HalfNewTriangle> halfNewTriangles;
 
+        private int _a, _b;
+
         public void Execute()
         {
             while (halfNewTriangles.Count > 0)
             {
+                _a = _b = -1;
+
                 HalfNewTriangle _hnTriangle = halfNewTriangles.Dequeue();
 
                 sideTriangles.Add(originalIndexesToSide[_hnTriangle.a]);
@@ -956,10 +961,16 @@ public class Cuttable : MonoBehaviour
                 {
                     sideTriangles.Add(originalIndexesToSide[_hnTriangle.b]);
                 }
-                sideTriangles.Add(vertexToSide[_hnTriangle.c.vertex]);
+                _a = vertexToSide[_hnTriangle.c.vertex];
+                sideTriangles.Add(_a);
                 if (!_hnTriangle.d.Empty())
                 {
-                    sideTriangles.Add(vertexToSide[_hnTriangle.d.vertex]);
+                    _b = vertexToSide[_hnTriangle.d.vertex];
+                    sideTriangles.Add(_b);
+
+                    //if we have 2 new vertices we add them to edges hash-maps
+                    // edgesToLeft.TryAdd(_a, _b);
+                    // edgesToRight.TryAdd(_b, _a);
                 }
             }
         }
