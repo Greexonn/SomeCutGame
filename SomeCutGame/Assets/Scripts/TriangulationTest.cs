@@ -127,7 +127,7 @@ public class TriangulationTest : MonoBehaviour
         }
 
 
-        //find farthes vertex
+        //find farthest vertex
         int _boundIndex = _indexesSorted.IndexOf(_vertLeft);
         int _boundIndex2 = _indexesSorted.IndexOf(_vertRight);
         if (_boundIndex2 > _boundIndex)
