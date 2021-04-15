@@ -1,453 +1,412 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
-public class DefaultCutCode
+namespace DefaultCode
 {
-    public static bool currentlyCutting;
-    public static Mesh originalMesh;
-
-    public static void Cut(GameObject originalGameObject, Vector3 contactPoint, Vector3 direction, Material cutMaterial = null, bool fill = true, bool addRigidbody = false)
+    public static class DefaultCutCode
     {
-        if (currentlyCutting)
+        public static bool currentlyCutting;
+        private static Mesh _originalMesh;
+
+        public static void Cut(GameObject originalGameObject, Vector3 contactPoint, Vector3 direction, Material cutMaterial = null, bool fill = true, bool addRigidbody = false)
         {
-            return;
+            if (currentlyCutting)
+            {
+                return;
+            }
+
+            currentlyCutting = true;
+
+            var plane = new Plane(originalGameObject.transform.InverseTransformDirection(-direction), originalGameObject.transform.InverseTransformPoint(contactPoint));
+            _originalMesh = originalGameObject.GetComponent<MeshFilter>().mesh;
+            var addedVertices = new List<Vector3>();
+
+            var leftMesh = new GeneratedMesh();
+            var rightMesh = new GeneratedMesh();
+
+            for (var i = 0; i < _originalMesh.subMeshCount; i++)
+            {
+                var submeshIndices = _originalMesh.GetTriangles(i);
+
+                for (var j = 0; j < submeshIndices.Length; j += 3)
+                {
+                    var triangleIndexA = submeshIndices[j];
+                    var triangleIndexB = submeshIndices[j + 1];
+                    var triangleIndexC = submeshIndices[j + 2];
+
+                    var currentTriangle = GetTriangle(triangleIndexA, triangleIndexB, triangleIndexC, i);
+
+                    var triangleALeftSide = plane.GetSide(_originalMesh.vertices[triangleIndexA]);
+                    var triangleBLeftSide = plane.GetSide(_originalMesh.vertices[triangleIndexB]);
+                    var triangleCLeftSide = plane.GetSide(_originalMesh.vertices[triangleIndexC]);
+
+                    switch (triangleALeftSide)
+                    {
+                        case true when triangleBLeftSide && triangleCLeftSide:
+                            leftMesh.AddTriangle(currentTriangle);
+                            break;
+                        case false when !triangleBLeftSide && !triangleCLeftSide:
+                            rightMesh.AddTriangle(currentTriangle);
+                            break;
+                        default:
+                            CutTriangle(plane, currentTriangle, triangleALeftSide, triangleBLeftSide, triangleCLeftSide, leftMesh, rightMesh, addedVertices);
+                            FillCut(addedVertices, plane, leftMesh, rightMesh);
+                            break;
+                    }
+                }
+            }
+
+            //generate new objects
+            GeneratePartObject(originalGameObject, leftMesh, cutMaterial);
+            GeneratePartObject(originalGameObject, rightMesh, cutMaterial);
+            //destroy original object
+            Object.Destroy(originalGameObject);
         }
 
-        currentlyCutting = true;
-
-        Plane _plane = new Plane(originalGameObject.transform.InverseTransformDirection(-direction), originalGameObject.transform.InverseTransformPoint(contactPoint));
-        originalMesh = originalGameObject.GetComponent<MeshFilter>().mesh;
-        List<Vector3> _addedVertices = new List<Vector3>();
-
-        GeneratedMesh _leftMesh = new GeneratedMesh();
-        GeneratedMesh _rightMesh = new GeneratedMesh();
-
-        int[] _submeshIndices;
-        int triangleIndexA, triangleIndexB, triangleIndexC;
-
-        for (int i = 0; i < originalMesh.subMeshCount; i++)
+        private static void GeneratePartObject(GameObject originalGameObject, GeneratedMesh partMesh, Material cutMaterial)
         {
-            _submeshIndices = originalMesh.GetTriangles(i);
+            var part = new GameObject(originalGameObject.name + "_part");
+            part.transform.SetPositionAndRotation(originalGameObject.transform.position, originalGameObject.transform.rotation);
+            var partMeshFilter = part.AddComponent<MeshFilter>();
+            partMeshFilter.mesh = partMesh.GetMesh();
+            var partRenderer = part.AddComponent<MeshRenderer>();
+            //set materials
+            var materials = new List<Material>(originalGameObject.GetComponent<MeshRenderer>().materials);
+            materials.Add(cutMaterial != null ? cutMaterial : materials[0]);
+            partRenderer.materials = materials.ToArray();
 
-            for (int j = 0; j < _submeshIndices.Length; j += 3)
+            //
+            part.AddComponent<MeshCollider>().convex = true;
+            part.AddComponent<Rigidbody>();
+        }
+
+        private static void CutTriangle(Plane plane, MeshTriangle currentTriangle, bool triangleALeftSide, bool triangleBLeftSide, bool triangleCLeftSide, GeneratedMesh leftMesh, GeneratedMesh rightMesh, List<Vector3> addedVertices)
+        {
+            var leftSide = new List<bool> {triangleALeftSide, triangleBLeftSide, triangleCLeftSide};
+
+            var leftMeshTriangle = new MeshTriangle(new Vector3[2], new Vector3[2], new Vector2[2], currentTriangle.submeshIndex);
+            var rightMeshTriangle = new MeshTriangle(new Vector3[2], new Vector3[2], new Vector2[2], currentTriangle.submeshIndex);
+
+            for (var i = 0; i < 3; i++)
             {
-                triangleIndexA = _submeshIndices[j];
-                triangleIndexB = _submeshIndices[j + 1];
-                triangleIndexC = _submeshIndices[j + 2];
-
-                MeshTriangle _currentTriangle = GetTriangle(triangleIndexA, triangleIndexB, triangleIndexC, i);
-
-                bool _triangleALeftSide = _plane.GetSide(originalMesh.vertices[triangleIndexA]);
-                bool _triangleBLeftSide = _plane.GetSide(originalMesh.vertices[triangleIndexB]);
-                bool _triangleCLeftSide = _plane.GetSide(originalMesh.vertices[triangleIndexC]);
-
-                if (_triangleALeftSide && _triangleBLeftSide && _triangleCLeftSide)
+                if (leftSide[i])
                 {
-                    _leftMesh.AddTriangle(_currentTriangle);
-                }
-                else if (!_triangleALeftSide && !_triangleBLeftSide && !_triangleCLeftSide)
-                {
-                    _rightMesh.AddTriangle(_currentTriangle);
+                    leftMeshTriangle.vertices[0] = currentTriangle.vertices[i];
+                    leftMeshTriangle.vertices[1] = leftMeshTriangle.vertices[0];
+
+                    leftMeshTriangle.normals[0] = currentTriangle.normals[i];
+                    leftMeshTriangle.normals[1] = leftMeshTriangle.normals[0];
+
+                    leftMeshTriangle.uvs[0] = currentTriangle.uvs[i];
+                    leftMeshTriangle.uvs[1] = leftMeshTriangle.uvs[0];
                 }
                 else
                 {
-                    CutTriangle(_plane, _currentTriangle, _triangleALeftSide, _triangleBLeftSide, _triangleCLeftSide, _leftMesh, _rightMesh, _addedVertices);
-                    FillCut(_addedVertices, _plane, _leftMesh, _rightMesh);
+                    rightMeshTriangle.vertices[0] = currentTriangle.vertices[i];
+                    rightMeshTriangle.vertices[1] = rightMeshTriangle.vertices[0];
+
+                    rightMeshTriangle.normals[0] = currentTriangle.normals[i];
+                    rightMeshTriangle.normals[1] = rightMeshTriangle.normals[0];
+
+                    rightMeshTriangle.uvs[0] = currentTriangle.uvs[i];
+                    rightMeshTriangle.uvs[1] = rightMeshTriangle.uvs[0];
                 }
             }
-        }
-
-        //generate new objects
-        GeneratePartObject(originalGameObject, _leftMesh, cutMaterial);
-        GeneratePartObject(originalGameObject, _rightMesh, cutMaterial);
-        //destroy original object
-        GameObject.Destroy(originalGameObject);
-    }
-
-    public static void GeneratePartObject(GameObject originalGameObject, GeneratedMesh partMesh, Material cutMaterial)
-    {
-        GameObject _part = new GameObject(originalGameObject.name + "_part");
-        _part.transform.SetPositionAndRotation(originalGameObject.transform.position, originalGameObject.transform.rotation);
-        MeshFilter _partMeshFilter = _part.AddComponent<MeshFilter>();
-        _partMeshFilter.mesh = partMesh.GetMesh();
-        MeshRenderer _partRenderer = _part.AddComponent<MeshRenderer>();
-        //set materials
-        List<Material> _materials = new List<Material>(originalGameObject.GetComponent<MeshRenderer>().materials);
-        if (cutMaterial != null)
-            _materials.Add(cutMaterial);
-        else
-            _materials.Add(_materials[0]);
-        _partRenderer.materials = _materials.ToArray();
-
-        //
-        _part.AddComponent<MeshCollider>().convex = true;
-        _part.AddComponent<Rigidbody>();
-    }
-
-    private static void CutTriangle(Plane plane, MeshTriangle currentTriangle, bool triangleALeftSide, bool triangleBLeftSide, bool triangleCLeftSide, GeneratedMesh leftMesh, GeneratedMesh rightMesh, List<Vector3> addedVertices)
-    {
-        List<bool> _leftSide = new List<bool>();
-        _leftSide.Add(triangleALeftSide);
-        _leftSide.Add(triangleBLeftSide);
-        _leftSide.Add(triangleCLeftSide);
-
-        MeshTriangle _leftMeshTriangle = new MeshTriangle(new Vector3[2], new Vector3[2], new Vector2[2], currentTriangle.submeshIndex);
-        MeshTriangle _rightMeshTriangle = new MeshTriangle(new Vector3[2], new Vector3[2], new Vector2[2], currentTriangle.submeshIndex);
-
-        bool _left = false;
-        bool _right = false;
-
-        for (int i = 0; i < 3; i++)
-        {
-            if (_leftSide[i])
-            {
-                if (!_left)
-                {
-                    _left = false;
-
-                    _leftMeshTriangle.vertices[0] = currentTriangle.vertices[i];
-                    _leftMeshTriangle.vertices[1] = _leftMeshTriangle.vertices[0];
-
-                    _leftMeshTriangle.normals[0] = currentTriangle.normals[i];
-                    _leftMeshTriangle.normals[1] = _leftMeshTriangle.normals[0];
-
-                    _leftMeshTriangle.uvs[0] = currentTriangle.uvs[i];
-                    _leftMeshTriangle.uvs[1] = _leftMeshTriangle.uvs[0];
-                }
-                else
-                {
-                    _leftMeshTriangle.vertices[1] = currentTriangle.vertices[i];
-                    _leftMeshTriangle.normals[1] = currentTriangle.normals[i];
-                    _leftMeshTriangle.uvs[1] = currentTriangle.uvs[i];
-                }
-            }
-            else
-            {
-                if (!_right)
-                {
-                    _right = false;
-
-                    _rightMeshTriangle.vertices[0] = currentTriangle.vertices[i];
-                    _rightMeshTriangle.vertices[1] = _rightMeshTriangle.vertices[0];
-
-                    _rightMeshTriangle.normals[0] = currentTriangle.normals[i];
-                    _rightMeshTriangle.normals[1] = _rightMeshTriangle.normals[0];
-
-                    _rightMeshTriangle.uvs[0] = currentTriangle.uvs[i];
-                    _rightMeshTriangle.uvs[1] = _rightMeshTriangle.uvs[0];
-                }
-                else
-                {
-                    _rightMeshTriangle.vertices[1] = currentTriangle.vertices[i];
-                    _rightMeshTriangle.normals[1] = currentTriangle.normals[i];
-                    _rightMeshTriangle.uvs[1] = currentTriangle.uvs[i];
-                }
-            }
-        }
         
-        ////////////////////////
-        float _normalizedDistance;
-        float _distance;
+            ////////////////////////
 
-        plane.Raycast(new Ray(_leftMeshTriangle.vertices[0], (_rightMeshTriangle.vertices[0] - _leftMeshTriangle.vertices[0]).normalized), out _distance);
+            plane.Raycast(new Ray(leftMeshTriangle.vertices[0], (rightMeshTriangle.vertices[0] - leftMeshTriangle.vertices[0]).normalized), out var distance);
 
-        _normalizedDistance = _distance / (_rightMeshTriangle.vertices[0] - _leftMeshTriangle.vertices[0]).magnitude;
-        Vector3 _vertLeft = Vector3.Lerp(_leftMeshTriangle.vertices[0], _rightMeshTriangle.vertices[0], _normalizedDistance);
-        addedVertices.Add(_vertLeft);
+            var normalizedDistance = distance / (rightMeshTriangle.vertices[0] - leftMeshTriangle.vertices[0]).magnitude;
+            var vertLeft = Vector3.Lerp(leftMeshTriangle.vertices[0], rightMeshTriangle.vertices[0], normalizedDistance);
+            addedVertices.Add(vertLeft);
 
-        Vector3 _normalLeft = Vector3.Lerp(_leftMeshTriangle.normals[0], _rightMeshTriangle.normals[0], _normalizedDistance);
-        Vector2 _uvLeft = Vector2.Lerp(_leftMeshTriangle.uvs[0], _rightMeshTriangle.uvs[0], _normalizedDistance);
+            var normalLeft = Vector3.Lerp(leftMeshTriangle.normals[0], rightMeshTriangle.normals[0], normalizedDistance);
+            var uvLeft = Vector2.Lerp(leftMeshTriangle.uvs[0], rightMeshTriangle.uvs[0], normalizedDistance);
 
-        plane.Raycast(new Ray(_leftMeshTriangle.vertices[1], (_rightMeshTriangle.vertices[1] - _leftMeshTriangle.vertices[1]).normalized), out _distance);
+            plane.Raycast(new Ray(leftMeshTriangle.vertices[1], (rightMeshTriangle.vertices[1] - leftMeshTriangle.vertices[1]).normalized), out distance);
 
-        _normalizedDistance = _distance / (_rightMeshTriangle.vertices[1] - _leftMeshTriangle.vertices[1]).magnitude;
-        Vector3 _vertRight = Vector3.Lerp(_leftMeshTriangle.vertices[1], _rightMeshTriangle.vertices[1], _normalizedDistance);
-        addedVertices.Add(_vertRight);
+            normalizedDistance = distance / (rightMeshTriangle.vertices[1] - leftMeshTriangle.vertices[1]).magnitude;
+            var vertRight = Vector3.Lerp(leftMeshTriangle.vertices[1], rightMeshTriangle.vertices[1], normalizedDistance);
+            addedVertices.Add(vertRight);
 
-        Vector3 _normalRight = Vector3.Lerp(_leftMeshTriangle.normals[1], _rightMeshTriangle.normals[1], _normalizedDistance);
-        Vector2 _uvRight = Vector2.Lerp(_leftMeshTriangle.uvs[1], _rightMeshTriangle.uvs[1], _normalizedDistance);
+            var normalRight = Vector3.Lerp(leftMeshTriangle.normals[1], rightMeshTriangle.normals[1], normalizedDistance);
+            var uvRight = Vector2.Lerp(leftMeshTriangle.uvs[1], rightMeshTriangle.uvs[1], normalizedDistance);
 
-        ////////////////
-        //left
-        MeshTriangle _currentTriangle;
-        Vector3[] _updatedVertices = new Vector3[] {_leftMeshTriangle.vertices[0], _vertLeft, _vertRight};
-        Vector3[] _updatedNormals = new Vector3[] {_leftMeshTriangle.normals[0], _normalLeft, _normalRight};
-        Vector2[] _updatedUVs = new Vector2[] {_leftMeshTriangle.uvs[0], _uvLeft, _uvRight};
+            ////////////////
+            //left
+            var updatedVertices = new[] {leftMeshTriangle.vertices[0], vertLeft, vertRight};
+            var updatedNormals = new[] {leftMeshTriangle.normals[0], normalLeft, normalRight};
+            var updatedUVs = new[] {leftMeshTriangle.uvs[0], uvLeft, uvRight};
 
-        _currentTriangle = new MeshTriangle(_updatedVertices, _updatedNormals, _updatedUVs, currentTriangle.submeshIndex);
+            var _currentTriangle = new MeshTriangle(updatedVertices, updatedNormals, updatedUVs, currentTriangle.submeshIndex);
 
-        if (_updatedVertices[0] != _updatedVertices[1] && _updatedVertices[0] != _updatedVertices[2])
-        {
-            if (Vector3.Dot(Vector3.Cross(_updatedVertices[1] - _updatedVertices[0], _updatedVertices[2] - _updatedVertices[0]), _updatedNormals[0]) < 0)
+            if (updatedVertices[0] != updatedVertices[1] && updatedVertices[0] != updatedVertices[2])
+            {
+                if (Vector3.Dot(Vector3.Cross(updatedVertices[1] - updatedVertices[0], updatedVertices[2] - updatedVertices[0]), updatedNormals[0]) < 0)
+                {
+                    FlipTriangle(_currentTriangle);
+                }
+                leftMesh.AddTriangle(_currentTriangle);
+            }
+
+            updatedVertices = new[] {leftMeshTriangle.vertices[0], leftMeshTriangle.vertices[1], vertRight};
+            updatedNormals = new[] {leftMeshTriangle.normals[0], leftMeshTriangle.normals[1], normalRight};
+            updatedUVs = new[] {leftMeshTriangle.uvs[0], leftMeshTriangle.uvs[1], uvRight};
+
+            _currentTriangle = new MeshTriangle(updatedVertices, updatedNormals, updatedUVs, currentTriangle.submeshIndex);
+
+            if (updatedVertices[0] != updatedVertices[1] && updatedVertices[0] != updatedVertices[2])
+            {
+                if (Vector3.Dot(Vector3.Cross(updatedVertices[1] - updatedVertices[0], updatedVertices[2] - updatedVertices[0]), updatedNormals[0]) < 0)
+                {
+                    FlipTriangle(_currentTriangle);
+                }
+                leftMesh.AddTriangle(_currentTriangle);
+            }
+
+            //right
+            updatedVertices = new[] {rightMeshTriangle.vertices[0], vertLeft, vertRight};
+            updatedNormals = new[] {rightMeshTriangle.normals[0], normalLeft, normalRight};
+            updatedUVs = new[] {rightMeshTriangle.uvs[0], uvLeft, uvRight};
+
+            _currentTriangle = new MeshTriangle(updatedVertices, updatedNormals, updatedUVs, currentTriangle.submeshIndex);
+
+            if (updatedVertices[0] != updatedVertices[1] && updatedVertices[0] != updatedVertices[2])
+            {
+                if (Vector3.Dot(Vector3.Cross(updatedVertices[1] - updatedVertices[0], updatedVertices[2] - updatedVertices[0]), updatedNormals[0]) < 0)
+                {
+                    FlipTriangle(_currentTriangle);
+                }
+                rightMesh.AddTriangle(_currentTriangle);
+            }
+
+            updatedVertices = new[] {rightMeshTriangle.vertices[0], rightMeshTriangle.vertices[1], vertRight};
+            updatedNormals = new[] {rightMeshTriangle.normals[0], rightMeshTriangle.normals[1], normalRight};
+            updatedUVs = new[] {rightMeshTriangle.uvs[0], rightMeshTriangle.uvs[1], uvRight};
+
+            _currentTriangle = new MeshTriangle(updatedVertices, updatedNormals, updatedUVs, currentTriangle.submeshIndex);
+
+            if (updatedVertices[0] == updatedVertices[1] || updatedVertices[0] == updatedVertices[2]) 
+                return;
+            
+            if (Vector3.Dot(Vector3.Cross(updatedVertices[1] - updatedVertices[0], updatedVertices[2] - updatedVertices[0]), updatedNormals[0]) < 0)
             {
                 FlipTriangle(_currentTriangle);
             }
-            leftMesh.AddTriangle(_currentTriangle);
-        }
-
-        _updatedVertices = new Vector3[] {_leftMeshTriangle.vertices[0], _leftMeshTriangle.vertices[1], _vertRight};
-        _updatedNormals = new Vector3[] {_leftMeshTriangle.normals[0], _leftMeshTriangle.normals[1], _normalRight};
-        _updatedUVs = new Vector2[] {_leftMeshTriangle.uvs[0], _leftMeshTriangle.uvs[1], _uvRight};
-
-        _currentTriangle = new MeshTriangle(_updatedVertices, _updatedNormals, _updatedUVs, currentTriangle.submeshIndex);
-
-        if (_updatedVertices[0] != _updatedVertices[1] && _updatedVertices[0] != _updatedVertices[2])
-        {
-            if (Vector3.Dot(Vector3.Cross(_updatedVertices[1] - _updatedVertices[0], _updatedVertices[2] - _updatedVertices[0]), _updatedNormals[0]) < 0)
-            {
-                FlipTriangle(_currentTriangle);
-            }
-            leftMesh.AddTriangle(_currentTriangle);
-        }
-
-        //right
-        _updatedVertices = new Vector3[] {_rightMeshTriangle.vertices[0], _vertLeft, _vertRight};
-        _updatedNormals = new Vector3[] {_rightMeshTriangle.normals[0], _normalLeft, _normalRight};
-        _updatedUVs = new Vector2[] {_rightMeshTriangle.uvs[0], _uvLeft, _uvRight};
-
-        _currentTriangle = new MeshTriangle(_updatedVertices, _updatedNormals, _updatedUVs, currentTriangle.submeshIndex);
-
-        if (_updatedVertices[0] != _updatedVertices[1] && _updatedVertices[0] != _updatedVertices[2])
-        {
-            if (Vector3.Dot(Vector3.Cross(_updatedVertices[1] - _updatedVertices[0], _updatedVertices[2] - _updatedVertices[0]), _updatedNormals[0]) < 0)
-            {
-                FlipTriangle(_currentTriangle);
-            }
+            
             rightMesh.AddTriangle(_currentTriangle);
         }
 
-        _updatedVertices = new Vector3[] {_rightMeshTriangle.vertices[0], _rightMeshTriangle.vertices[1], _vertRight};
-        _updatedNormals = new Vector3[] {_rightMeshTriangle.normals[0], _rightMeshTriangle.normals[1], _normalRight};
-        _updatedUVs = new Vector2[] {_rightMeshTriangle.uvs[0], _rightMeshTriangle.uvs[1], _uvRight};
-
-        _currentTriangle = new MeshTriangle(_updatedVertices, _updatedNormals, _updatedUVs, currentTriangle.submeshIndex);
-
-        if (_updatedVertices[0] != _updatedVertices[1] && _updatedVertices[0] != _updatedVertices[2])
+        private static void FlipTriangle(MeshTriangle currentTriangle)
         {
-            if (Vector3.Dot(Vector3.Cross(_updatedVertices[1] - _updatedVertices[0], _updatedVertices[2] - _updatedVertices[0]), _updatedNormals[0]) < 0)
-            {
-                FlipTriangle(_currentTriangle);
-            }
-            rightMesh.AddTriangle(_currentTriangle);
+            currentTriangle.vertices.Reverse();
         }
-    }
 
-    private static void FlipTriangle(MeshTriangle currentTriangle)
-    {
-        currentTriangle.vertices.Reverse();
-    }
-
-    public static void FillCut(List<Vector3> addedVertices, Plane plane, GeneratedMesh leftMesh, GeneratedMesh rightMesh)
-    {
-        List<Vector3> _vertices = new List<Vector3>();
-        List<Vector3> _polygone = new List<Vector3>();
-
-        for (int i = 0; i < addedVertices.Count; i++)
+        private static void FillCut(List<Vector3> addedVertices, Plane plane, GeneratedMesh leftMesh, GeneratedMesh rightMesh)
         {
-            if (!_vertices.Contains(addedVertices[i]))
+            var vertices = new List<Vector3>();
+            var polygone = new List<Vector3>();
+
+            for (var i = 0; i < addedVertices.Count; i++)
             {
-                _polygone.Clear();
-                _polygone.Add(addedVertices[i]);
-                _polygone.Add(addedVertices[i + 1]);
+                if (vertices.Contains(addedVertices[i])) 
+                    continue;
+                
+                polygone.Clear();
+                polygone.Add(addedVertices[i]);
+                polygone.Add(addedVertices[i + 1]);
 
-                _vertices.Add(addedVertices[i]);
-                _vertices.Add(addedVertices[i + 1]);
+                vertices.Add(addedVertices[i]);
+                vertices.Add(addedVertices[i + 1]);
 
-                EvaluatePairs(addedVertices, _vertices, _polygone);
-                Fill(_polygone, plane, leftMesh, rightMesh);
+                EvaluatePairs(addedVertices, vertices, polygone);
+                Fill(polygone, plane, leftMesh, rightMesh);
             }
         }
-    }
 
-    private static void EvaluatePairs(List<Vector3> addedVertices, List<Vector3> vertices, List<Vector3> polygone)
-    {
-        bool _isDone = false;
-        while (!_isDone)
+        private static void EvaluatePairs(IReadOnlyList<Vector3> addedVertices, ICollection<Vector3> vertices, IList<Vector3> polygone)
         {
-            _isDone = true;
-            for (int i = 0; i < addedVertices.Count; i += 2)
+            var isDone = false;
+            while (!isDone)
             {
-                if (addedVertices[i] == polygone[polygone.Count - 1] && !vertices.Contains(addedVertices[i + 1]))
+                isDone = true;
+                for (var i = 0; i < addedVertices.Count; i += 2)
                 {
-                    _isDone = false;
-                    polygone.Add(addedVertices[i + 1]);
-                    vertices.Add(addedVertices[i + 1]);
-                }
-                else if (addedVertices[i + 1] == polygone[polygone.Count - 1] && !vertices.Contains(addedVertices[i]))
-                {
-                    _isDone = false;
-                    polygone.Add(addedVertices[i]);
-                    vertices.Add(addedVertices[i]);
+                    if (addedVertices[i] == polygone[polygone.Count - 1] && !vertices.Contains(addedVertices[i + 1]))
+                    {
+                        isDone = false;
+                        polygone.Add(addedVertices[i + 1]);
+                        vertices.Add(addedVertices[i + 1]);
+                    }
+                    else if (addedVertices[i + 1] == polygone[polygone.Count - 1] && !vertices.Contains(addedVertices[i]))
+                    {
+                        isDone = false;
+                        polygone.Add(addedVertices[i]);
+                        vertices.Add(addedVertices[i]);
+                    }
                 }
             }
         }
-    }
 
-    private static void Fill(List<Vector3> vertices, Plane plane, GeneratedMesh leftMesh, GeneratedMesh rightMesh)
-    {
-        Vector3 _centerPosition = Vector3.zero;
-        for (int i = 0; i < vertices.Count; i++)
+        private static void Fill(IReadOnlyList<Vector3> vertices, Plane plane, GeneratedMesh leftMesh, GeneratedMesh rightMesh)
         {
-            _centerPosition += vertices[i];
-        }
-        _centerPosition = _centerPosition / vertices.Count;
+            var centerPosition = vertices.Aggregate(Vector3.zero, (current, t) => current + t);
+            centerPosition /= vertices.Count;
 
-        Vector3 _up = plane.normal;
+            var up = plane.normal;
        
 
-        Vector3 _left = Vector3.Cross(plane.normal, plane.normal);
+            var left = Vector3.Cross(plane.normal, plane.normal);
 
-        Vector3 _displacement = Vector3.zero;
-        Vector2 _uv1 = Vector2.zero;
-        Vector2 _uv2 = Vector2.zero;
+            var uv2 = Vector2.zero;
 
-        for (int i = 0; i < vertices.Count; i++)
-        {
-            _displacement = vertices[i] - _centerPosition;
-            _uv1 = new Vector2()
+            for (var i = 0; i < vertices.Count; i++)
             {
-                x = 0.5f + Vector3.Dot(_displacement, _left),
-                y = 0.5f + Vector3.Dot(_displacement, _up)
-            };
-
-            Vector3[] _vertices = new Vector3[] {vertices[i], vertices[(i + 1) % vertices.Count], _centerPosition};
-            Vector3[] _normals = new Vector3[] {-plane.normal, -plane.normal, -plane.normal};
-            Vector2[] _uvs = new Vector2[] {_uv1, _uv2, new Vector2(0.5f, 0.5f)};
-
-            MeshTriangle _currentTriangle = new MeshTriangle(_vertices, _normals, _uvs, originalMesh.subMeshCount);
-
-            if (Vector3.Dot(Vector3.Cross(_vertices[1] - _vertices[0], _vertices[2] - _vertices[0]), _normals[0]) < 0)
-            {
-                FlipTriangle(_currentTriangle);
-            }
-            leftMesh.AddTriangle(_currentTriangle);
-
-            _normals = new Vector3[] {plane.normal, plane.normal, plane.normal};
-            _currentTriangle = new MeshTriangle(_vertices, _normals, _uvs, originalMesh.subMeshCount);
-
-            if (Vector3.Dot(Vector3.Cross(_vertices[1] - _vertices[0], _vertices[2] - _vertices[0]), _normals[0]) < 0)
-            {
-                FlipTriangle(_currentTriangle);
-            }
-            rightMesh.AddTriangle(_currentTriangle);
-        }
-    }
-
-    private static MeshTriangle GetTriangle(int triangleIndexA, int triangleIndexB, int triangleIndexC, int i)
-    {
-        List<Vector3> _vertices = new List<Vector3>();
-        List<Vector3> _normals = new List<Vector3>();
-        List<Vector2> _uvs = new List<Vector2>();
-        
-        _vertices.Add(originalMesh.vertices[triangleIndexA]);
-        _vertices.Add(originalMesh.vertices[triangleIndexB]);
-        _vertices.Add(originalMesh.vertices[triangleIndexC]);
-
-        _normals.Add(originalMesh.normals[triangleIndexA]);
-        _normals.Add(originalMesh.normals[triangleIndexB]);
-        _normals.Add(originalMesh.normals[triangleIndexC]);
-
-        _uvs.Add(originalMesh.uv[triangleIndexA]);
-        _uvs.Add(originalMesh.uv[triangleIndexB]);
-        _uvs.Add(originalMesh.uv[triangleIndexC]);
-
-        return new MeshTriangle(_vertices.ToArray(), _normals.ToArray(), _uvs.ToArray(), i);
-    }
-}
-
-public class GeneratedMesh
-{
-    public List<Vector3> vertices = new List<Vector3>();
-    public List<Vector3> normals = new List<Vector3>();
-    public List<Vector2> uvs = new List<Vector2>();
-    public List<List<int>> triangles = new List<List<int>>();
-
-    //
-    public List<Vector3> edgeVertices = new List<Vector3>();
-
-    private bool[] _verticesPresents = new bool[3];
-    private int[] _presentedIDs = new int[3];
-
-    public void AddTriangle(MeshTriangle triangle)
-    {
-        if (triangles.Count < (triangle.submeshIndex + 1))
-        {
-            for (int i = triangles.Count; i < triangle.submeshIndex + 1; i++)
-            {
-                triangles.Add(new List<int>());
-            }
-        }
-
-        for (int i = 0; i < 3; i++)
-            _verticesPresents[i] = false;
-        for (int i = 0; i < vertices.Count; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                if (vertices[i] == triangle.vertices[j])
+                var displacement = vertices[i] - centerPosition;
+                var uv1 = new Vector2
                 {
+                    x = 0.5f + Vector3.Dot(displacement, left),
+                    y = 0.5f + Vector3.Dot(displacement, up)
+                };
+
+                var _vertices = new[] {vertices[i], vertices[(i + 1) % vertices.Count], centerPosition};
+                var _normals = new[] {-plane.normal, -plane.normal, -plane.normal};
+                var _uvs = new[] {uv1, uv2, new Vector2(0.5f, 0.5f)};
+
+                var currentTriangle = new MeshTriangle(_vertices, _normals, _uvs, _originalMesh.subMeshCount);
+
+                if (Vector3.Dot(Vector3.Cross(_vertices[1] - _vertices[0], _vertices[2] - _vertices[0]), _normals[0]) < 0)
+                {
+                    FlipTriangle(currentTriangle);
+                }
+                leftMesh.AddTriangle(currentTriangle);
+
+                _normals = new[] {plane.normal, plane.normal, plane.normal};
+                currentTriangle = new MeshTriangle(_vertices, _normals, _uvs, _originalMesh.subMeshCount);
+
+                if (Vector3.Dot(Vector3.Cross(_vertices[1] - _vertices[0], _vertices[2] - _vertices[0]), _normals[0]) < 0)
+                {
+                    FlipTriangle(currentTriangle);
+                }
+                rightMesh.AddTriangle(currentTriangle);
+            }
+        }
+
+        private static MeshTriangle GetTriangle(int triangleIndexA, int triangleIndexB, int triangleIndexC, int i)
+        {
+            var vertices = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var uvs = new List<Vector2>();
+        
+            vertices.Add(_originalMesh.vertices[triangleIndexA]);
+            vertices.Add(_originalMesh.vertices[triangleIndexB]);
+            vertices.Add(_originalMesh.vertices[triangleIndexC]);
+
+            normals.Add(_originalMesh.normals[triangleIndexA]);
+            normals.Add(_originalMesh.normals[triangleIndexB]);
+            normals.Add(_originalMesh.normals[triangleIndexC]);
+
+            uvs.Add(_originalMesh.uv[triangleIndexA]);
+            uvs.Add(_originalMesh.uv[triangleIndexB]);
+            uvs.Add(_originalMesh.uv[triangleIndexC]);
+
+            return new MeshTriangle(vertices.ToArray(), normals.ToArray(), uvs.ToArray(), i);
+        }
+    }
+
+    public class GeneratedMesh
+    {
+        private readonly List<Vector3> _vertices = new List<Vector3>();
+        private readonly List<Vector3> _normals = new List<Vector3>();
+        private readonly List<Vector2> _uvs = new List<Vector2>();
+        private readonly List<List<int>> _triangles = new List<List<int>>();
+        
+        private readonly bool[] _verticesPresents = new bool[3];
+        private readonly int[] _presentedIDs = new int[3];
+
+        public void AddTriangle(MeshTriangle triangle)
+        {
+            if (_triangles.Count < (triangle.submeshIndex + 1))
+            {
+                for (var i = _triangles.Count; i < triangle.submeshIndex + 1; i++)
+                {
+                    _triangles.Add(new List<int>());
+                }
+            }
+
+            for (var i = 0; i < 3; i++)
+                _verticesPresents[i] = false;
+            for (var i = 0; i < _vertices.Count; i++)
+            {
+                for (var j = 0; j < 3; j++)
+                {
+                    if (_vertices[i] != triangle.vertices[j]) 
+                        continue;
+                    
                     _verticesPresents[j] = true;
                     _presentedIDs[j] = i;
                 }
             }
-        }
-        for (int i = 0; i < 3; i++)
-        {
-            if (_verticesPresents[i] && triangles[triangle.submeshIndex].Contains(_presentedIDs[i]))
+            for (var i = 0; i < 3; i++)
             {
-                triangles[triangle.submeshIndex].Add(_presentedIDs[i]);
-            }
-            else
-            {
-                vertices.Add(triangle.vertices[i]);
-                normals.Add(triangle.normals[i]);
-                uvs.Add(triangle.uvs[i]);
-                triangles[triangle.submeshIndex].Add(vertices.Count - 1);
+                if (_verticesPresents[i] && _triangles[triangle.submeshIndex].Contains(_presentedIDs[i]))
+                {
+                    _triangles[triangle.submeshIndex].Add(_presentedIDs[i]);
+                }
+                else
+                {
+                    _vertices.Add(triangle.vertices[i]);
+                    _normals.Add(triangle.normals[i]);
+                    _uvs.Add(triangle.uvs[i]);
+                    _triangles[triangle.submeshIndex].Add(_vertices.Count - 1);
+                }
             }
         }
-    }
 
-    public Mesh GetMesh()
-    {
-        Mesh _mesh = new Mesh();
-
-        _mesh.SetVertices(vertices);
-        _mesh.subMeshCount = triangles.Count;
-        for (int i = 0; i < triangles.Count; i++)
+        public Mesh GetMesh()
         {
-            _mesh.SetTriangles(triangles[i], i);
+            var mesh = new Mesh();
+
+            mesh.SetVertices(_vertices);
+            mesh.subMeshCount = _triangles.Count;
+            for (var i = 0; i < _triangles.Count; i++)
+            {
+                mesh.SetTriangles(_triangles[i], i);
+            }
+            mesh.SetNormals(_normals);
+            mesh.SetUVs(0, _uvs);
+
+            return mesh;
         }
-        _mesh.SetNormals(normals);
-        _mesh.SetUVs(0, uvs);
-
-        return _mesh;
-    }
-}
-
-public class MeshTriangle
-{
-    public List<Vector3> vertices = new List<Vector3>();
-    public List<Vector3> normals = new List<Vector3>();
-    public List<Vector2> uvs = new List<Vector2>();
-    public int submeshIndex;
-
-    public MeshTriangle(Vector3[] vertices, Vector3[] normals, Vector2[] uvs, int submeshIndex)
-    {
-        Clear();
-
-        this.vertices.AddRange(vertices);
-        this.normals.AddRange(normals);
-        this.uvs.AddRange(uvs);
-
-        this.submeshIndex = submeshIndex;
     }
 
-    public void Clear()
+    public class MeshTriangle
     {
-        vertices.Clear();
-        normals.Clear();
-        uvs.Clear();
+        public readonly List<Vector3> vertices = new List<Vector3>();
+        public readonly List<Vector3> normals = new List<Vector3>();
+        public readonly List<Vector2> uvs = new List<Vector2>();
+        public int submeshIndex;
 
-        submeshIndex = 0;
+        public MeshTriangle(IEnumerable<Vector3> vertices, IEnumerable<Vector3> normals, IEnumerable<Vector2> uvs, int submeshIndex)
+        {
+            Clear();
+
+            this.vertices.AddRange(vertices);
+            this.normals.AddRange(normals);
+            this.uvs.AddRange(uvs);
+
+            this.submeshIndex = submeshIndex;
+        }
+
+        private void Clear()
+        {
+            vertices.Clear();
+            normals.Clear();
+            uvs.Clear();
+
+            submeshIndex = 0;
+        }
     }
 }

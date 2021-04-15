@@ -8,14 +8,14 @@ public class BladeSliceController : MonoBehaviour
     private bool _isInSlice;
     private float _transition;
 
-    void Update()
+    private void Update()
     {
         if (_isInSlice)
         {
             if (_transition < 1)
             {
                 _transition += Time.deltaTime * _sliceSpeed;
-                transform.Rotate(_sliceAngle * Time.deltaTime * _sliceSpeed, Space.Self);
+                transform.Rotate(_sliceAngle * (Time.deltaTime * _sliceSpeed), Space.Self);
             }
             else
             {
@@ -24,11 +24,11 @@ public class BladeSliceController : MonoBehaviour
         }
         else
         {
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                _transition = 0;
-                _isInSlice = true;
-            }
+            if (!Input.GetKeyDown(KeyCode.Space)) 
+                return;
+            
+            _transition = 0;
+            _isInSlice = true;
         }
     }
 }

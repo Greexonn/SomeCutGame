@@ -1,19 +1,22 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Cutter : MonoBehaviour
+namespace DefaultCode
 {
-    public void OnCollisionEnter(Collision other)
+    public class Cutter : MonoBehaviour
     {
-        DefaultCutCode.Cut(other.gameObject, transform.position, transform.up);
+        public void OnCollisionEnter(Collision other)
+        {
+            var localTransform = transform;
+            DefaultCutCode.Cut(other.gameObject, localTransform.position, localTransform.up);
 
-        StartCoroutine(Reset());
-    }
+            StartCoroutine(ResetCoroutine());
+        }
 
-    private IEnumerator Reset()
-    {
-        yield return new WaitForSeconds(1);
-        DefaultCutCode.currentlyCutting = false;
+        private static IEnumerator ResetCoroutine()
+        {
+            yield return new WaitForSeconds(1);
+            DefaultCutCode.currentlyCutting = false;
+        }
     }
 }
