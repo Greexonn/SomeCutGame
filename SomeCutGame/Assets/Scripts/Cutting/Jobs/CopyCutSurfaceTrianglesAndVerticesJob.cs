@@ -26,9 +26,9 @@ namespace Cutting.Jobs
             //copy vertices
             for (var i = 0; i < edgeVertices.Length; i++)
             {
-                sideVertices.Add(edgeVertices[i].vertex);
-                sideNormals.Add(normal);
-                sideUVs.Add(edgeVertices[i].uv);
+                // sideVertices.Add(edgeVertices[i].vertex);
+                // sideNormals.Add(normal);
+                // sideUVs.Add(edgeVertices[i].uv);
             }
             //copy triangles
             if (inverseOrder)

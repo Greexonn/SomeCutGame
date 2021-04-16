@@ -28,9 +28,9 @@ namespace Cutting.Jobs
 
                 //add vertex info
                 var vertex = edgesToVertices[edges[i]];
-                sideVertices.Add(vertex.vertex);
-                sideNormals.Add(vertex.normal);
-                sideUVs.Add(vertex.uv);
+                // sideVertices.Add(vertex.vertex);
+                // sideNormals.Add(vertex.normal);
+                // sideUVs.Add(vertex.uv);
             }
         }
     }

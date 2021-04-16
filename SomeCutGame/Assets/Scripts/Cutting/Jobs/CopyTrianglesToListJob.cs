@@ -14,7 +14,7 @@ namespace Cutting.Jobs
         {
             while (triangleIndexes.Count > 0)
             {
-                listTriangles.Add(triangleIndexes.Dequeue());
+                listTriangles.AddNoResize(triangleIndexes.Dequeue());
             }
         }
     }

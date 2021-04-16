@@ -31,14 +31,14 @@ namespace Cutting
         private List<GeneratedMesh> _generatedMeshes;
 
         //native 
-        private NativeArray<int> _sideIds;
+        private NativeArray<Side> _sideIds;
         private NativeQueue<VertexInfo> _dataLeft;
         private NativeQueue<VertexInfo> _dataRight;
 
         private NativeHashMap<int, int> _originalIndexToLeft;
         private NativeHashMap<int, int> _originalIndexToRight;
 
-        private NativeArray<int>[] _triangleTypes;
+        private NativeArray<Side>[] _triangleTypes;
         private NativeQueue<int>[] _triangleIndexesLeft;
         private NativeQueue<int>[] _triangleIndexesRight;
 
@@ -144,20 +144,29 @@ namespace Cutting
 
             //perform cut
             AllocateTemporalContainers();
-            Debug.Log($"Allocation time: {_stopwatch.ElapsedMilliseconds}");
+            Debug.Log($"Allocation time: {_stopwatch.Elapsed.TotalMilliseconds}");
+            _stopwatch.Stop();
+            _stopwatch.Reset();
+            _stopwatch.Start();
             //
             SplitMesh();
-            Debug.Log($"Split time: {_stopwatch.ElapsedMilliseconds}");
-            FillCutEdge();
-            Debug.Log($"Fill edge time: {_stopwatch.ElapsedMilliseconds}");
-            FillHoles();
-            Debug.Log($"Fill holes time: {_stopwatch.ElapsedMilliseconds}");
+            Debug.Log($"Split time: {_stopwatch.Elapsed.TotalMilliseconds}");
+            _stopwatch.Stop();
+            _stopwatch.Reset();
+            _stopwatch.Start();
+            // FillCutEdge();
+            Debug.Log($"Fill edge time: {_stopwatch.Elapsed.TotalMilliseconds}");
+            _stopwatch.Stop();
+            _stopwatch.Reset();
+            _stopwatch.Start();
+            // FillHoles();
+            Debug.Log($"Fill holes time: {_stopwatch.Elapsed.TotalMilliseconds}");
             //
             DisposeTemporalContainers();
             
             _stopwatch.Stop();
             
-            Debug.Log($"Cut time: {_stopwatch.ElapsedMilliseconds}");
+            Debug.Log($"Cut time: {_stopwatch.Elapsed.TotalMilliseconds}");
 
             //create new parts
             CreateNewObjects();
@@ -197,19 +206,19 @@ namespace Cutting
                 _triangleIndexesLeft[i].Dispose();
                 _triangleIndexesRight[i].Dispose();
                 _originalIntersectingTriangles[i].Dispose();
-                _originalIntersectingTrianglesList[i].Dispose();
-                _edgesToVertices[i].Dispose();
-                _edgeVerticesToLeft[i].Dispose();
-                _edgeVerticesToRight[i].Dispose();
-                _halfNewTrianglesLeft[i].Dispose();
-                _halfNewTrianglesRight[i].Dispose();
-                _intersectedEdges[i].Dispose();
-                _edgeVerticesOnPlane[i].Dispose();
-                _edgeVertices[i].Dispose();
-                _sortedEdgeVertices[i].Dispose();
-                _edgesToLeft[i].Dispose();
-                _edgesToRight[i].Dispose();
-                _cutSurfaceTriangles[i].Dispose();
+                // _originalIntersectingTrianglesList[i].Dispose();
+                // _edgesToVertices[i].Dispose();
+                // _edgeVerticesToLeft[i].Dispose();
+                // _edgeVerticesToRight[i].Dispose();
+                // _halfNewTrianglesLeft[i].Dispose();
+                // _halfNewTrianglesRight[i].Dispose();
+                // _intersectedEdges[i].Dispose();
+                // _edgeVerticesOnPlane[i].Dispose();
+                // _edgeVertices[i].Dispose();
+                // _sortedEdgeVertices[i].Dispose();
+                // _edgesToLeft[i].Dispose();
+                // _edgesToRight[i].Dispose();
+                // _cutSurfaceTriangles[i].Dispose();
             }
 
             //dispose job handle lists
@@ -220,53 +229,36 @@ namespace Cutting
         private void SplitMesh()
         {
             var verticesCount = _originalGeneratedMesh.vertices.Length;
-            _sideIds = new NativeArray<int>(verticesCount, Allocator.TempJob);
+            _sideIds = new NativeArray<Side>(verticesCount, Allocator.TempJob);
 
             //get all vertices sides
-            var getVertexesSideJob = new GetVertexesSideParallelJob
+            var getVertexesSideJob = new GetVerticesSideParallelJob
             {
                 planeCenter = new float3(_cuttingPlaneCenter.x, _cuttingPlaneCenter.y, _cuttingPlaneCenter.z),
                 planeNormal = new float3(_cuttingPlaneNormal.x, _cuttingPlaneNormal.y, _cuttingPlaneNormal.z),
                 vertices = _originalGeneratedMesh.vertices.AsArray(),
-                normals = _originalGeneratedMesh.normals.AsArray(),
-                uvs = _originalGeneratedMesh.uvs.AsArray(),
-                sideIds = _sideIds,
-                leftSide = _dataLeft.AsParallelWriter(),
-                rightSide = _dataRight.AsParallelWriter()
+                sideIds = _sideIds
             };
 
-            var getVertexesSideJobHandle = getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, (verticesCount / 10 + 1));
+            var getVertexesSideJobHandle = getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, verticesCount / 10 + 1);
             _handles.Add(getVertexesSideJobHandle);
 
             //make hash-maps for triangle indexes and mesh data
-            var setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
+            var setMeshHashMapsJob = new SetMeshDataAndHashMapsParallelJob
             {
-                sideData = _dataLeft,
-                verticesSide = _leftPart.vertices,
-                normalsSide = _leftPart.normals,
-                uvsSide = _leftPart.uvs,
-                originalIndexesToSide = _originalIndexToLeft
+                vertexSides = _sideIds,
+                originalIndexToLeft = _originalIndexToLeft,
+                originalIndexToRight = _originalIndexToRight
             };
 
-            _handles.Add(setMeshAndHashMaps.Schedule(getVertexesSideJobHandle));
-
-            setMeshAndHashMaps = new SetMehsDataAndHashMapsJob
-            {
-                sideData = _dataRight,
-                verticesSide = _rightPart.vertices,
-                normalsSide = _rightPart.normals,
-                uvsSide = _rightPart.uvs,
-                originalIndexesToSide = _originalIndexToRight
-            };
-
-            _handles.Add(setMeshAndHashMaps.Schedule(getVertexesSideJobHandle));
-
+            var dependency = setMeshHashMapsJob.Schedule(verticesCount, getVertexesSideJobHandle);
+            _handles.Add(dependency);
+            
             //check triangles
-            var dependency = JobHandle.CombineDependencies(_handles[_handles.Length - 1], _handles[_handles.Length - 2]);
-            _triangleTypes = new NativeArray<int>[_subMeshCount];
+            _triangleTypes = new NativeArray<Side>[_subMeshCount];
             for (var i = 0; i < _subMeshCount; i++)
             {
-                _triangleTypes[i] = new NativeArray<int>(_originalGeneratedMesh.triangles[i].Length / 3, Allocator.TempJob);
+                _triangleTypes[i] = new NativeArray<Side>(_originalGeneratedMesh.triangles[i].Length / 3, Allocator.TempJob);
 
                 var checkTrianglesParallelJob = new CheckTrianglesParallelJob
                 {
@@ -303,35 +295,86 @@ namespace Cutting
                 };
             
                 //schedule job
-                _handles.Add(reassignTrianglesJob.Schedule(_triangleTypes[i].Length, (_triangleTypes[i].Length / 10 + 1), _dependencies[i]));
+                _handles.Add(reassignTrianglesJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, _dependencies[i]));
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
-
-            var localDependencies = new NativeList<JobHandle>(Allocator.Persistent);
-            localDependencies.AddRange(_dependencies.AsArray());
+            
+            JobHandle.CompleteAll(_dependencies.AsArray());
             _dependencies.Clear();
+            _handles.Clear();
+            
+            // copy mesh data
+            _rightPart.ResizeVertices(_originalIndexToRight.Count());
+            _leftPart.ResizeVertices(_originalIndexToLeft.Count());
+            
+            var copyMeshDataJob = new CopyMeshDataParallelJob
+            {
+                vertices = _originalGeneratedMesh.vertices.AsArray(),
+                normals = _originalGeneratedMesh.normals.AsArray(),
+                uvs = _originalGeneratedMesh.uvs.AsArray(),
+                originalIndexToLeft = _originalIndexToLeft,
+                originalIndexToRight = _originalIndexToRight,
+                rightVertices = _rightPart.vertices.AsArray(),
+                rightNormals = _rightPart.normals.AsArray(),
+                rightUVs = _rightPart.uvs,
+                leftVertices = _leftPart.vertices,
+                leftNormals = _leftPart.normals,
+                leftUVs = _leftPart.uvs
+            };
+
+            var copyMeshDataHandle = copyMeshDataJob.Schedule(verticesCount, 10);
+            _dependencies.Add(copyMeshDataHandle);
+
             //assign triangles to mesh
             for (var i = 0; i < _subMeshCount; i++)
             {
-                var assignTriangles = new CopyTrianglesToListJob
+                var rightLenght = _triangleIndexesRight[i].Count;
+                var leftLength = _triangleIndexesLeft[i].Count;
+                
+                // resize
+                _rightPart.ResizeTriangles(i, rightLenght);
+                _leftPart.ResizeTriangles(i, leftLength);
+
+                var copyTrianglesJob = new CopyTrianglesToListParallelJob
                 {
-                    triangleIndexes = _triangleIndexesLeft[i],
-                    listTriangles = _leftPart.triangles[i]
+                    triangleIndexes = _triangleIndexesRight[i].ToArray(Allocator.TempJob),
+                    targetBuffer = _rightPart.triangles[i]
                 };
 
-                _handles.Add(assignTriangles.Schedule(localDependencies[i]));
-                _dependencies.Add(_handles[_handles.Length - 1]);
-
-                assignTriangles = new CopyTrianglesToListJob
+                var handle = copyTrianglesJob.Schedule(rightLenght, 10);
+                _handles.Add(handle);
+                _dependencies.Add(handle);
+                
+                copyTrianglesJob = new CopyTrianglesToListParallelJob
                 {
-                    triangleIndexes = _triangleIndexesRight[i],
-                    listTriangles = _rightPart.triangles[i]
+                    triangleIndexes = _triangleIndexesLeft[i].ToArray(Allocator.TempJob),
+                    targetBuffer = _leftPart.triangles[i]
                 };
 
-                _handles.Add(assignTriangles.Schedule(localDependencies[i]));
-                _dependencies.Add(_handles[_handles.Length - 1]);
+                handle = copyTrianglesJob.Schedule(leftLength, 10);
+                _handles.Add(handle);
+                _dependencies.Add(handle);
+
+                // var assignTriangles = new CopyTrianglesToListJob
+                // {
+                //     triangleIndexes = _triangleIndexesLeft[i],
+                //     listTriangles = _leftPart.triangles[i]
+                // };
+                //
+                // _handles.Add(assignTriangles.Schedule());
+                // _dependencies.Add(_handles[_handles.Length - 1]);
+                //
+                // assignTriangles = new CopyTrianglesToListJob
+                // {
+                //     triangleIndexes = _triangleIndexesRight[i],
+                //     listTriangles = _rightPart.triangles[i]
+                // };
+                //
+                // _handles.Add(assignTriangles.Schedule());
+                // _dependencies.Add(_handles[_handles.Length - 1]);
             }
-            localDependencies.Dispose();
+            
+            JobHandle.CompleteAll(_dependencies);
         }
 
         private void FillCutEdge()
@@ -383,7 +426,7 @@ namespace Cutting
                     rightHalfTriangles = _halfNewTrianglesRight[i].AsParallelWriter()
                 };
 
-                _handles.Add(cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, (_originalIntersectingTrianglesList[i].Length / 3 / 10 + 1), _dependencies[i]));
+                _handles.Add(cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, _originalIntersectingTrianglesList[i].Length / 3 / 10 + 1, _dependencies[i]));
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
 

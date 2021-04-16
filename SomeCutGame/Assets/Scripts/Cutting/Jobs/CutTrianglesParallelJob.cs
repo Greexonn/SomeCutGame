@@ -13,7 +13,7 @@ namespace Cutting.Jobs
         [ReadOnly] public NativeArray<float3> vertices, normals;
         [ReadOnly] public NativeArray<float2> uvs;
         [ReadOnly] public NativeList<int> triangles;
-        [ReadOnly] public NativeArray<int> sideIDs;
+        [ReadOnly] public NativeArray<Side> sideIDs;
 
         [WriteOnly] public NativeHashMap<Edge, VertexInfo>.ParallelWriter edgesToVertices;
         [WriteOnly] public NativeQueue<HalfNewTriangle>.ParallelWriter leftHalfTriangles, rightHalfTriangles;
@@ -60,7 +60,7 @@ namespace Cutting.Jobs
             //create half-new triangles
             switch (sideIDs[solidEdge.a])
             {
-                case -1:
+                case Side.Right:
                 {
                     //base on right side
                     rightHalfTriangles.Enqueue(new HalfNewTriangle
@@ -121,9 +121,9 @@ namespace Cutting.Jobs
 
             var relation = FindIntersectionPosOnSegment(vertices[edge.a], vertices[edge.b]);
 
-            newVertex.vertex = math.lerp(vertices[edge.a], vertices[edge.b], relation);
-            newVertex.normal = math.lerp(normals[edge.a], normals[edge.b], relation);
-            newVertex.uv = math.lerp(uvs[edge.a], uvs[edge.b], relation);
+            // newVertex.vertex = math.lerp(vertices[edge.a], vertices[edge.b], relation);
+            // newVertex.normal = math.lerp(normals[edge.a], normals[edge.b], relation);
+            // newVertex.uv = math.lerp(uvs[edge.a], uvs[edge.b], relation);
 
             return newVertex;
         }

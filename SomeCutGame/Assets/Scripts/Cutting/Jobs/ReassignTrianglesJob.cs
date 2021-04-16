@@ -1,3 +1,4 @@
+using Cutting.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -9,21 +10,24 @@ namespace Cutting.Jobs
     {
         [ReadOnly] public NativeHashMap<int, int> originalIndexesToLeft, originalIndexesToRight;
         [ReadOnly] public NativeArray<int> triangleIndexes;
-        [ReadOnly] public NativeArray<int> triangleTypes;
+        [ReadOnly] public NativeArray<Side> triangleTypes;
 
-        [WriteOnly] public NativeQueue<int>.ParallelWriter leftTriangleIndexes, rightTriangleIndexes, intersectingTriangleIndexes;
+        [WriteOnly] public NativeQueue<int>.ParallelWriter 
+            leftTriangleIndexes,
+            rightTriangleIndexes,
+            intersectingTriangleIndexes;
 
         public void Execute(int index)
         {
-            var currentStatrtIndex = index * 3;
+            var currentStartIndex = index * 3;
 
-            var vertexA = triangleIndexes[currentStatrtIndex];
-            var vertexB = triangleIndexes[currentStatrtIndex + 1]; 
-            var vertexC = triangleIndexes[currentStatrtIndex + 2];
+            var vertexA = triangleIndexes[currentStartIndex];
+            var vertexB = triangleIndexes[currentStartIndex + 1]; 
+            var vertexC = triangleIndexes[currentStartIndex + 2];
 
             switch (triangleTypes[index])
             {
-                case 3:
+                case Side.Left:
                 {
                     //if left
                     leftTriangleIndexes.Enqueue(originalIndexesToLeft[vertexA]);
@@ -31,7 +35,7 @@ namespace Cutting.Jobs
                     leftTriangleIndexes.Enqueue(originalIndexesToLeft[vertexC]);
                     break;
                 }
-                case -3:
+                case Side.Right:
                 {
                     //if right
                     rightTriangleIndexes.Enqueue(originalIndexesToRight[vertexA]);

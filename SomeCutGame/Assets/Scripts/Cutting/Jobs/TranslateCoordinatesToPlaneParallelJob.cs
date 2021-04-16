@@ -17,10 +17,10 @@ namespace Cutting.Jobs
 
         public void Execute(int index)
         {
-            var x = math.dot(planeXAxis, edgeVertices[index].vertex);
-            var y = math.dot(planeYAxis, edgeVertices[index].vertex);
+            // var x = math.dot(planeXAxis, edgeVertices[index].vertex);
+            // var y = math.dot(planeYAxis, edgeVertices[index].vertex);
 
-            edgeVerticesOnPlane[index] = new float2(x, y);
+            // edgeVerticesOnPlane[index] = new float2(x, y);
         }
     }
 }

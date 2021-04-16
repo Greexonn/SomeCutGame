@@ -1,10 +1,11 @@
+using System;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace Cutting.Data
 {
-    public struct GeneratedMesh
+    public struct GeneratedMesh : IDisposable
     {
         public NativeList<float3> vertices;
         public NativeList<float3> normals;
@@ -21,6 +22,24 @@ namespace Cutting.Data
             {
                 triangles[i] = new NativeList<int>(Allocator.Persistent);
             }
+        }
+
+        public void ResizeVertices(int length)
+        {
+            if (length == 0)
+                return;
+            
+            vertices.Resize(length, NativeArrayOptions.UninitializedMemory);
+            normals.Resize(length, NativeArrayOptions.UninitializedMemory);
+            uvs.Resize(length, NativeArrayOptions.UninitializedMemory);
+        }
+
+        public void ResizeTriangles(int submeshIndex, int length)
+        {
+            if (length == 0)
+                return;
+            
+            triangles[submeshIndex].Resize(length, NativeArrayOptions.UninitializedMemory);
         }
 
         public void Dispose()
