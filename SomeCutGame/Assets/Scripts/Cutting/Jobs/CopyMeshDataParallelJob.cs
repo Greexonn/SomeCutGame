@@ -1,3 +1,4 @@
+using Cutting.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -12,7 +13,8 @@ namespace Cutting.Jobs
         [ReadOnly] public NativeArray<float3> normals;
         [ReadOnly] public NativeArray<float2> uvs;
 
-        [ReadOnly] public NativeHashMap<int, int> originalIndexToRight, originalIndexToLeft;
+        [ReadOnly] public NativeArray<int> originalIndexToPart;
+        [ReadOnly] public NativeArray<Side> vertexSide;
 
         [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<float3> rightVertices, leftVertices;
         [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<float3> rightNormals, leftNormals;
@@ -20,21 +22,20 @@ namespace Cutting.Jobs
         
         public void Execute(int index)
         {
-            if (originalIndexToRight.ContainsKey(index))
+            var id = originalIndexToPart[index];
+            
+            switch (vertexSide[index])
             {
-                var id = originalIndexToRight[index];
-
-                rightVertices[id] = vertices[index];
-                rightNormals[id] = normals[index];
-                rightUVs[id] = uvs[index];
-            }
-            else
-            {
-                var id = originalIndexToLeft[index];
-
-                leftVertices[id] = vertices[index];
-                leftNormals[id] = normals[index];
-                leftUVs[id] = uvs[index];
+                case Side.Right:
+                    rightVertices[id] = vertices[index];
+                    rightNormals[id] = normals[index];
+                    rightUVs[id] = uvs[index];
+                    break;
+                case Side.Left:
+                    leftVertices[id] = vertices[index];
+                    leftNormals[id] = normals[index];
+                    leftUVs[id] = uvs[index];
+                    break;
             }
         }
     }

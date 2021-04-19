@@ -35,12 +35,13 @@ namespace Cutting
         private NativeQueue<VertexInfo> _dataLeft;
         private NativeQueue<VertexInfo> _dataRight;
 
-        private NativeHashMap<int, int> _originalIndexToLeft;
-        private NativeHashMap<int, int> _originalIndexToRight;
-
+        private NativeArray<int> _originalIndexToPart;
+        
         private NativeArray<Side>[] _triangleTypes;
         private NativeQueue<int>[] _triangleIndexesLeft;
         private NativeQueue<int>[] _triangleIndexesRight;
+
+        private NativeArray<int> _vertexCounts;
 
         private NativeQueue<int>[] _originalIntersectingTriangles;
         private NativeList<int>[] _originalIntersectingTrianglesList;
@@ -154,7 +155,7 @@ namespace Cutting
             _stopwatch.Stop();
             _stopwatch.Reset();
             _stopwatch.Start();
-            // FillCutEdge();
+            FillCutEdge();
             Debug.Log($"Fill edge time: {_stopwatch.Elapsed.TotalMilliseconds}");
             _stopwatch.Stop();
             _stopwatch.Reset();
@@ -176,9 +177,10 @@ namespace Cutting
         {
             _dataLeft = new NativeQueue<VertexInfo>(Allocator.TempJob);
             _dataRight = new NativeQueue<VertexInfo>(Allocator.TempJob);
-               
-            _originalIndexToLeft = new NativeHashMap<int, int>(_dataLeft.Count, Allocator.TempJob);
-            _originalIndexToRight = new NativeHashMap<int, int>(_dataRight.Count, Allocator.TempJob);
+
+            _vertexCounts = new NativeArray<int>(2, Allocator.TempJob);
+            
+            _originalIndexToPart = new NativeArray<int>(_originalGeneratedMesh.vertices.Length, Allocator.TempJob);
 
             _addedTrianglesLeft = new NativeQueue<int>(Allocator.TempJob);
             _addedTrianglesRight = new NativeQueue<int>(Allocator.TempJob);
@@ -194,8 +196,9 @@ namespace Cutting
             _dataLeft.Dispose();
             _dataRight.Dispose();
 
-            _originalIndexToLeft.Dispose();
-            _originalIndexToRight.Dispose();
+            _vertexCounts.Dispose();
+            
+            _originalIndexToPart.Dispose();
 
             _addedTrianglesLeft.Dispose();
             _addedTrianglesRight.Dispose();
@@ -244,11 +247,11 @@ namespace Cutting
             _handles.Add(getVertexesSideJobHandle);
 
             //make hash-maps for triangle indexes and mesh data
-            var setMeshHashMapsJob = new SetMeshDataAndHashMapsParallelJob
+            var setMeshHashMapsJob = new SetMeshDataAndPartIndexesParallelJob
             {
                 vertexSides = _sideIds,
-                originalIndexToLeft = _originalIndexToLeft,
-                originalIndexToRight = _originalIndexToRight
+                originalIndexToPart = _originalIndexToPart,
+                vertexCounts = _vertexCounts
             };
 
             var dependency = setMeshHashMapsJob.Schedule(verticesCount, getVertexesSideJobHandle);
@@ -290,8 +293,7 @@ namespace Cutting
                     leftTriangleIndexes = _triangleIndexesLeft[i].AsParallelWriter(),
                     rightTriangleIndexes = _triangleIndexesRight[i].AsParallelWriter(),
                     intersectingTriangleIndexes = _originalIntersectingTriangles[i].AsParallelWriter(),
-                    originalIndexesToLeft = _originalIndexToLeft,
-                    originalIndexesToRight = _originalIndexToRight
+                    originalIndexToPart = _originalIndexToPart
                 };
             
                 //schedule job
@@ -304,16 +306,16 @@ namespace Cutting
             _handles.Clear();
             
             // copy mesh data
-            _rightPart.ResizeVertices(_originalIndexToRight.Count());
-            _leftPart.ResizeVertices(_originalIndexToLeft.Count());
+            _rightPart.ResizeVertices(_vertexCounts[1]);
+            _leftPart.ResizeVertices(_vertexCounts[0]);
             
             var copyMeshDataJob = new CopyMeshDataParallelJob
             {
                 vertices = _originalGeneratedMesh.vertices.AsArray(),
                 normals = _originalGeneratedMesh.normals.AsArray(),
                 uvs = _originalGeneratedMesh.uvs.AsArray(),
-                originalIndexToLeft = _originalIndexToLeft,
-                originalIndexToRight = _originalIndexToRight,
+                originalIndexToPart = _originalIndexToPart,
+                vertexSide = _sideIds,
                 rightVertices = _rightPart.vertices.AsArray(),
                 rightNormals = _rightPart.normals.AsArray(),
                 rightUVs = _rightPart.uvs,
@@ -354,24 +356,6 @@ namespace Cutting
                 handle = copyTrianglesJob.Schedule(leftLength, 10);
                 _handles.Add(handle);
                 _dependencies.Add(handle);
-
-                // var assignTriangles = new CopyTrianglesToListJob
-                // {
-                //     triangleIndexes = _triangleIndexesLeft[i],
-                //     listTriangles = _leftPart.triangles[i]
-                // };
-                //
-                // _handles.Add(assignTriangles.Schedule());
-                // _dependencies.Add(_handles[_handles.Length - 1]);
-                //
-                // assignTriangles = new CopyTrianglesToListJob
-                // {
-                //     triangleIndexes = _triangleIndexesRight[i],
-                //     listTriangles = _rightPart.triangles[i]
-                // };
-                //
-                // _handles.Add(assignTriangles.Schedule());
-                // _dependencies.Add(_handles[_handles.Length - 1]);
             }
             
             JobHandle.CompleteAll(_dependencies);
@@ -489,7 +473,7 @@ namespace Cutting
                 var addEdgeTrianglesAndEdges = new AddEdgeTrianglesAndEdgesJob
                 {
                     sideTriangles = _leftPart.triangles[i],
-                    originalIndexesToSide = _originalIndexToLeft,
+                    originalIndexToPart = _originalIndexToPart,
                     edgeToSideVertex = _edgeVerticesToLeft[i],
                     halfNewTriangles = _halfNewTrianglesLeft[i],
                     edgesToLeft = _edgesToLeft[i],
@@ -502,7 +486,7 @@ namespace Cutting
                 var addEdgeTriangles = new AddEdgeTrianglesJob
                 {
                     sideTriangles = _rightPart.triangles[i],
-                    originalIndexesToSide = _originalIndexToRight,
+                    originalIndexToPart = _originalIndexToPart,
                     edgeToSideVertex = _edgeVerticesToRight[i],
                     halfNewTriangles = _halfNewTrianglesRight[i]
                 };

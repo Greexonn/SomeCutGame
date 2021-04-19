@@ -8,7 +8,7 @@ namespace Cutting.Jobs
     [BurstCompile]
     public struct ReassignTrianglesJob : IJobParallelFor
     {
-        [ReadOnly] public NativeHashMap<int, int> originalIndexesToLeft, originalIndexesToRight;
+        [ReadOnly] public NativeArray<int> originalIndexToPart;
         [ReadOnly] public NativeArray<int> triangleIndexes;
         [ReadOnly] public NativeArray<Side> triangleTypes;
 
@@ -30,17 +30,17 @@ namespace Cutting.Jobs
                 case Side.Left:
                 {
                     //if left
-                    leftTriangleIndexes.Enqueue(originalIndexesToLeft[vertexA]);
-                    leftTriangleIndexes.Enqueue(originalIndexesToLeft[vertexB]);
-                    leftTriangleIndexes.Enqueue(originalIndexesToLeft[vertexC]);
+                    leftTriangleIndexes.Enqueue(originalIndexToPart[vertexA]);
+                    leftTriangleIndexes.Enqueue(originalIndexToPart[vertexB]);
+                    leftTriangleIndexes.Enqueue(originalIndexToPart[vertexC]);
                     break;
                 }
                 case Side.Right:
                 {
                     //if right
-                    rightTriangleIndexes.Enqueue(originalIndexesToRight[vertexA]);
-                    rightTriangleIndexes.Enqueue(originalIndexesToRight[vertexB]);
-                    rightTriangleIndexes.Enqueue(originalIndexesToRight[vertexC]);
+                    rightTriangleIndexes.Enqueue(originalIndexToPart[vertexA]);
+                    rightTriangleIndexes.Enqueue(originalIndexToPart[vertexB]);
+                    rightTriangleIndexes.Enqueue(originalIndexToPart[vertexC]);
                     break;
                 }
                 default:

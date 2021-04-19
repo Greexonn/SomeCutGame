@@ -10,7 +10,7 @@ namespace Cutting.Jobs
     {
         [WriteOnly] public NativeList<int> sideTriangles;
 
-        [ReadOnly] public NativeHashMap<int, int> originalIndexesToSide;
+        [ReadOnly] public NativeArray<int> originalIndexToPart;
         [ReadOnly] public NativeHashMap<Edge, int> edgeToSideVertex;
 
         public NativeQueue<HalfNewTriangle> halfNewTriangles;
@@ -25,10 +25,10 @@ namespace Cutting.Jobs
 
                 var hnTriangle = halfNewTriangles.Dequeue();
 
-                sideTriangles.Add(originalIndexesToSide[hnTriangle.a]);
+                sideTriangles.Add(originalIndexToPart[hnTriangle.a]);
                 if (hnTriangle.b != -1)
                 {
-                    sideTriangles.Add(originalIndexesToSide[hnTriangle.b]);
+                    sideTriangles.Add(originalIndexToPart[hnTriangle.b]);
                 }
                 _a = edgeToSideVertex[hnTriangle.c];
                 sideTriangles.Add(_a);

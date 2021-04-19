@@ -6,24 +6,23 @@ using Unity.Jobs;
 namespace Cutting.Jobs
 {
     [BurstCompile]
-    public struct SetMeshDataAndHashMapsParallelJob : IJobFor
+    public struct SetMeshDataAndPartIndexesParallelJob : IJobFor
     {
         [ReadOnly] public NativeArray<Side> vertexSides;
         
-        [WriteOnly] public NativeHashMap<int, int> originalIndexToRight, originalIndexToLeft;
+        [WriteOnly] public NativeArray<int> originalIndexToPart;
 
-        private int _leftCounter;
-        private int _rightCounter;
+        public NativeArray<int> vertexCounts;
         
         public void Execute(int index)
         {
             switch (vertexSides[index])
             {
                 case Side.Left:
-                    originalIndexToLeft.TryAdd(index, _leftCounter++);
+                    originalIndexToPart[index] = vertexCounts[0]++;
                     break;
                 case Side.Right:
-                    originalIndexToRight.TryAdd(index, _rightCounter++);
+                    originalIndexToPart[index] = vertexCounts[1]++;
                     break;
             }
         }
