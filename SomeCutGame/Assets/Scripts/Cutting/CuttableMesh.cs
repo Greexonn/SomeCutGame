@@ -415,7 +415,7 @@ namespace Cutting
             _intersectedEdges = new NativeArray<Edge>[_subMeshCount];
             var previousHandle = _dependencies[0];
             //we will need left side vertex count for farther calculations
-            var leftSideVertexCount = _leftPart.vertices.Length;
+            var leftSideOriginalVertexCount = _leftPart.vertices.Length;
 
             for (var i = 0; i < _subMeshCount; i++)
             {
@@ -473,29 +473,41 @@ namespace Cutting
                 
                 _edgesToLeft[i] = new NativeHashMap<int, int>(length, Allocator.TempJob);
                 _edgesToRight[i] = new NativeHashMap<int, int>(length, Allocator.TempJob);
+                
+                // resize lists
+                var leftNewTrisCount = _halfNewTrianglesLeft[i].Count;
+                var leftOriginalTrianglesCount = _leftPart.triangles[i].Length;
+                var leftLength = leftOriginalTrianglesCount + leftNewTrisCount * 3;
+                _leftPart.ResizeTriangles(i, leftLength);
+                var rightNewTrisCount = _halfNewTrianglesRight[i].Count;
+                var rightOriginalTrianglesCount = _rightPart.triangles[i].Length;
+                var rightLength = rightOriginalTrianglesCount + rightNewTrisCount * 3;
+                _rightPart.ResizeTriangles(i, rightLength);
 
-                var addEdgeTrianglesAndEdges = new AddEdgeTrianglesAndEdgesJob
+                var addEdgeTrianglesAndEdges = new AddEdgeTrianglesAndEdgesParallelJob
                 {
-                    sideTriangles = _leftPart.triangles[i],
+                    sideTriangles = _leftPart.triangles[i].AsArray(),
                     originalIndexToPart = _originalIndexToPart,
                     edgeToSideVertex = _edgeVerticesToLeft[i],
-                    halfNewTriangles = _halfNewTrianglesLeft[i],
-                    edgesToLeft = _edgesToLeft[i],
-                    edgesToRight = _edgesToRight[i],
-                    previousVertexCount = leftSideVertexCount
+                    halfNewTriangles = _halfNewTrianglesLeft[i].ToArray(Allocator.TempJob),
+                    edgesToLeft = _edgesToLeft[i].AsParallelWriter(),
+                    edgesToRight = _edgesToRight[i].AsParallelWriter(),
+                    previousVertexCount = leftSideOriginalVertexCount,
+                    startTrianglesIndex = leftOriginalTrianglesCount
                 };
 
-                _handles.Add(addEdgeTrianglesAndEdges.Schedule(_dependencies[i]));
+                _handles.Add(addEdgeTrianglesAndEdges.Schedule(leftNewTrisCount, leftNewTrisCount / JobsUtility.JobWorkerCount, _dependencies[i]));
 
-                var addEdgeTriangles = new AddEdgeTrianglesJob
+                var addEdgeTriangles = new AddEdgeTrianglesParallelJob
                 {
                     sideTriangles = _rightPart.triangles[i],
                     originalIndexToPart = _originalIndexToPart,
                     edgeToSideVertex = _edgeVerticesToRight[i],
-                    halfNewTriangles = _halfNewTrianglesRight[i]
+                    halfNewTriangles = _halfNewTrianglesRight[i].ToArray(Allocator.TempJob),
+                    startTrianglesIndex = rightOriginalTrianglesCount
                 };
 
-                _handles.Add(addEdgeTriangles.Schedule(_dependencies[i]));
+                _handles.Add(addEdgeTriangles.Schedule(rightNewTrisCount, rightNewTrisCount / JobsUtility.JobWorkerCount, _dependencies[i]));
             
                 _dependencies[i] = JobHandle.CombineDependencies(_handles[_handles.Length - 1], _handles[_handles.Length - 2]);
             }

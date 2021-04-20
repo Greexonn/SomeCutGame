@@ -389,3 +389,457 @@ System memory in use after: 203.2 MB.
 Unloading 14 unused Assets to reduce memory usage. Loaded Objects now: 2664.
 Total: 5.146059 ms (FindLiveObjects: 0.353998 ms CreateObjectMapping: 0.105656 ms MarkObjects: 4.656396 ms  DeleteObjects: 0.028331 ms)
 
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002931 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.38 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.182 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.60 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2070 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 203.5 MB.
+System memory in use after: 203.6 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2668.
+Total: 2.710596 ms (FindLiveObjects: 0.452453 ms CreateObjectMapping: 0.158301 ms MarkObjects: 2.079059 ms  DeleteObjects: 0.018977 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002811 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.49 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.134 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 1.61 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2070 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 203.9 MB.
+System memory in use after: 204.0 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2672.
+Total: 2.258542 ms (FindLiveObjects: 0.350353 ms CreateObjectMapping: 0.167528 ms MarkObjects: 1.725337 ms  DeleteObjects: 0.014374 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 774.271362 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '6f40850b0b1b3e011326f46577544eb9') in 0.006857 seconds
+  Import took 0.011109 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002762 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.61 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.195 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 1.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 204.4 MB.
+System memory in use after: 204.5 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2677.
+Total: 4.846139 ms (FindLiveObjects: 0.397287 ms CreateObjectMapping: 0.142044 ms MarkObjects: 4.274190 ms  DeleteObjects: 0.029874 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 226.620874 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '85c1c232bb34cbe4df3a0b7ebfa9e949') in 0.004554 seconds
+  Import took 0.008666 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002894 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 1.01 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.368 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.50 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 204.8 MB.
+System memory in use after: 204.9 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2681.
+Total: 3.914673 ms (FindLiveObjects: 0.469854 ms CreateObjectMapping: 0.142267 ms MarkObjects: 3.283968 ms  DeleteObjects: 0.017554 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 497.058374 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: 'cf4c757aa3a67675737a62a034032703') in 0.004910 seconds
+  Import took 0.009115 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003443 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.37 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.211 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.34 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 205.3 MB.
+System memory in use after: 205.4 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2685.
+Total: 2.031323 ms (FindLiveObjects: 0.306476 ms CreateObjectMapping: 0.080548 ms MarkObjects: 1.629053 ms  DeleteObjects: 0.014341 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 338.608333 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '8f09247217eb2e0ef07edd0e41085543') in 0.008252 seconds
+  Import took 0.015239 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002744 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.54 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.202 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.40 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 205.7 MB.
+System memory in use after: 205.8 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2689.
+Total: 1.939762 ms (FindLiveObjects: 0.189365 ms CreateObjectMapping: 0.084446 ms MarkObjects: 1.650804 ms  DeleteObjects: 0.014324 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 15.327048 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: 'eaf775889169c7d4fb4af3f69b318a72') in 0.005680 seconds
+  Import took 0.010323 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002420 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.49 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.150 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.35 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 206.1 MB.
+System memory in use after: 206.2 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2693.
+Total: 2.027594 ms (FindLiveObjects: 0.221896 ms CreateObjectMapping: 0.077990 ms MarkObjects: 1.712562 ms  DeleteObjects: 0.014276 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 374.680527 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '6b24fba5184bd56bfbab0728de91aa6e') in 0.004013 seconds
+  Import took 0.008233 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002854 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.41 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.183 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.45 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 206.5 MB.
+System memory in use after: 206.7 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2697.
+Total: 3.721437 ms (FindLiveObjects: 0.346573 ms CreateObjectMapping: 0.104860 ms MarkObjects: 3.247180 ms  DeleteObjects: 0.021203 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 28.714934 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '5a59638d13585f3b35c68723af4551a0') in 0.005031 seconds
+  Import took 0.009109 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.001992 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.34 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.180 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.39 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 207.0 MB.
+System memory in use after: 207.1 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2701.
+Total: 4.158985 ms (FindLiveObjects: 0.743892 ms CreateObjectMapping: 0.462959 ms MarkObjects: 2.925263 ms  DeleteObjects: 0.025400 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 323.900786 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs
+  artifactKey: Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesAndEdgesParallelJob.cs using Guid(a72bf56bcfc424dd48ef1d77e7323a43) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '188d8a946f032524603db559081157e7') in 0.004912 seconds
+  Import took 0.009093 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002885 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.50 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.136 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.51 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 207.4 MB.
+System memory in use after: 207.6 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2705.
+Total: 1.952808 ms (FindLiveObjects: 0.211915 ms CreateObjectMapping: 0.076773 ms MarkObjects: 1.648537 ms  DeleteObjects: 0.014647 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002090 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.47 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.267 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.40 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2070 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 207.8 MB.
+System memory in use after: 208.0 MB.
+
+Unloading 14 unused Assets to reduce memory usage. Loaded Objects now: 2708.
+Total: 2.095858 ms (FindLiveObjects: 0.218984 ms CreateObjectMapping: 0.093509 ms MarkObjects: 1.758112 ms  DeleteObjects: 0.024009 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 147.645181 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesParallelJob.cs
+  artifactKey: Guid(b25e7b0e88202410db77cc23054439f9) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesParallelJob.cs using Guid(b25e7b0e88202410db77cc23054439f9) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '36095b2861a122a7860ca4ff0aced0d0') in 0.009610 seconds
+  Import took 0.015646 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.004580 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.36 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.268 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.50 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 208.3 MB.
+System memory in use after: 208.4 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2713.
+Total: 2.533231 ms (FindLiveObjects: 0.270354 ms CreateObjectMapping: 0.107001 ms MarkObjects: 2.132356 ms  DeleteObjects: 0.022030 ms)
+
+========================================================================
+Received Import Request.
+  Time since last request: 614.272554 seconds.
+  path: Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesParallelJob.cs
+  artifactKey: Guid(b25e7b0e88202410db77cc23054439f9) Importer(815301076,1909f56bfc062723c751e8b465ee728b)
+Start importing Assets/Scripts/Cutting/Jobs/AddEdgeTrianglesParallelJob.cs using Guid(b25e7b0e88202410db77cc23054439f9) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: '909a2bdf4c1140c5b84fbae9e5d62489') in 0.005030 seconds
+  Import took 0.009441 seconds .
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002963 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.38 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.341 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.35 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 208.8 MB.
+System memory in use after: 208.9 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2717.
+Total: 1.968988 ms (FindLiveObjects: 0.271790 ms CreateObjectMapping: 0.079917 ms MarkObjects: 1.603063 ms  DeleteObjects: 0.013364 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003479 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.37 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.236 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.81 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2071 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 209.2 MB.
+System memory in use after: 209.4 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2721.
+Total: 2.604567 ms (FindLiveObjects: 0.276213 ms CreateObjectMapping: 0.107486 ms MarkObjects: 2.198903 ms  DeleteObjects: 0.018476 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003527 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.40 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.342 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.39 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2070 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 209.7 MB.
+System memory in use after: 209.9 MB.
+
+Unloading 14 unused Assets to reduce memory usage. Loaded Objects now: 2724.
+Total: 4.717148 ms (FindLiveObjects: 0.431675 ms CreateObjectMapping: 0.100486 ms MarkObjects: 4.108731 ms  DeleteObjects: 0.074255 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003924 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.34 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.211 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.34 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2070 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 210.1 MB.
+System memory in use after: 210.3 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2728.
+Total: 2.051690 ms (FindLiveObjects: 0.287566 ms CreateObjectMapping: 0.082361 ms MarkObjects: 1.665652 ms  DeleteObjects: 0.014856 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003108 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.42 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.265 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.45 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2070 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 210.5 MB.
+System memory in use after: 210.7 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 2732.
+Total: 5.434236 ms (FindLiveObjects: 0.560715 ms CreateObjectMapping: 0.491039 ms MarkObjects: 4.337252 ms  DeleteObjects: 0.043252 ms)
+
