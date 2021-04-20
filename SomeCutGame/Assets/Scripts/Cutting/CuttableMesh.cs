@@ -45,14 +45,14 @@ namespace Cutting
 
         private NativeQueue<int>[] _originalIntersectingTriangles;
         private NativeList<int>[] _originalIntersectingTrianglesList;
-        private NativeHashMap<Edge, VertexInfo>[] _edgesToVertices;
+        private NativeHashMap<Edge, NewVertexInfo>[] _edgesToVertices;
         private NativeHashMap<Edge, int>[] _edgeVerticesToLeft, _edgeVerticesToRight;
         private NativeQueue<HalfNewTriangle>[] _halfNewTrianglesLeft, _halfNewTrianglesRight;
         private NativeQueue<int> _addedTrianglesLeft;
         private NativeQueue<int> _addedTrianglesRight;
         private NativeArray<Edge>[] _intersectedEdges;
 
-        private NativeArray<VertexInfo>[] _edgeVertices;
+        private NativeArray<NewVertexInfo>[] _edgeVertices;
         private NativeHashMap<int, int>[] _edgesToLeft, _edgesToRight;
         private NativeList<float2>[] _edgeVerticesOnPlane;
         private NativeList<int>[] _sortedEdgeVertices;
@@ -178,7 +178,7 @@ namespace Cutting
             _dataLeft = new NativeQueue<VertexInfo>(Allocator.TempJob);
             _dataRight = new NativeQueue<VertexInfo>(Allocator.TempJob);
 
-            _vertexCounts = new NativeArray<int>(2, Allocator.TempJob);
+            _vertexCounts = new NativeArray<int>(3, Allocator.TempJob);
             
             _originalIndexToPart = new NativeArray<int>(_originalGeneratedMesh.vertices.Length, Allocator.TempJob);
 
@@ -209,18 +209,18 @@ namespace Cutting
                 _triangleIndexesLeft[i].Dispose();
                 _triangleIndexesRight[i].Dispose();
                 _originalIntersectingTriangles[i].Dispose();
-                // _originalIntersectingTrianglesList[i].Dispose();
-                // _edgesToVertices[i].Dispose();
-                // _edgeVerticesToLeft[i].Dispose();
-                // _edgeVerticesToRight[i].Dispose();
-                // _halfNewTrianglesLeft[i].Dispose();
-                // _halfNewTrianglesRight[i].Dispose();
-                // _intersectedEdges[i].Dispose();
-                // _edgeVerticesOnPlane[i].Dispose();
+                _originalIntersectingTrianglesList[i].Dispose();
+                _edgesToVertices[i].Dispose();
+                _edgeVerticesToLeft[i].Dispose();
+                _edgeVerticesToRight[i].Dispose();
+                _halfNewTrianglesLeft[i].Dispose();
+                _halfNewTrianglesRight[i].Dispose();
+                _intersectedEdges[i].Dispose();
+                _edgesToLeft[i].Dispose();
+                _edgesToRight[i].Dispose();
                 // _edgeVertices[i].Dispose();
+                // _edgeVerticesOnPlane[i].Dispose();
                 // _sortedEdgeVertices[i].Dispose();
-                // _edgesToLeft[i].Dispose();
-                // _edgesToRight[i].Dispose();
                 // _cutSurfaceTriangles[i].Dispose();
             }
 
@@ -246,15 +246,15 @@ namespace Cutting
             var getVertexesSideJobHandle = getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, verticesCount / 10 + 1);
             _handles.Add(getVertexesSideJobHandle);
 
-            //make hash-maps for triangle indexes and mesh data
-            var setMeshHashMapsJob = new SetMeshDataAndPartIndexesParallelJob
+            //set part indexes
+            var setPartIndexesParallelJob = new SetPartIndexesParallelJob
             {
                 vertexSides = _sideIds,
                 originalIndexToPart = _originalIndexToPart,
                 vertexCounts = _vertexCounts
             };
 
-            var dependency = setMeshHashMapsJob.Schedule(verticesCount, getVertexesSideJobHandle);
+            var dependency = setPartIndexesParallelJob.Schedule(verticesCount, getVertexesSideJobHandle);
             _handles.Add(dependency);
             
             //check triangles
@@ -357,8 +357,6 @@ namespace Cutting
                 _handles.Add(handle);
                 _dependencies.Add(handle);
             }
-            
-            JobHandle.CompleteAll(_dependencies);
         }
 
         private void FillCutEdge()
@@ -370,15 +368,18 @@ namespace Cutting
             //copy intersected triangles to list so we can iterate in parallel
             for (var i = 0; i < _subMeshCount; i++)
             {
+                var originalLength = _originalIntersectingTriangles[i].Count;
+                
                 _originalIntersectingTrianglesList[i] = new NativeList<int>(Allocator.TempJob);
+                _originalIntersectingTrianglesList[i].ResizeUninitialized(originalLength);
 
-                var copyTrianglesToList = new CopyTrianglesToListJob
+                var copyTrianglesToList = new CopyTrianglesToListParallelJob
                 {
-                    triangleIndexes = _originalIntersectingTriangles[i],
-                    listTriangles = _originalIntersectingTrianglesList[i]
+                    triangleIndexes = _originalIntersectingTriangles[i].ToArray(Allocator.TempJob),
+                    targetBuffer = _originalIntersectingTrianglesList[i]
                 };
 
-                _handles.Add(copyTrianglesToList.Schedule(previousCombined));
+                _handles.Add(copyTrianglesToList.Schedule(originalLength, 10, previousCombined));
                 _dependencies.Add(_handles[_handles.Length - 1]);
             }
 
@@ -387,12 +388,12 @@ namespace Cutting
             _handles.Clear();
 
             //iterate throuhg all intersected triangles in every sub-mesh, add edge vertices and half-new triangles
-            _edgesToVertices = new NativeHashMap<Edge, VertexInfo>[_subMeshCount];
+            _edgesToVertices = new NativeHashMap<Edge, NewVertexInfo>[_subMeshCount];
             _halfNewTrianglesLeft = new NativeQueue<HalfNewTriangle>[_subMeshCount];
             _halfNewTrianglesRight = new NativeQueue<HalfNewTriangle>[_subMeshCount];
-            for (int i = 0; i < _subMeshCount; i++)
+            for (var i = 0; i < _subMeshCount; i++)
             {
-                _edgesToVertices[i] = new NativeHashMap<Edge, VertexInfo>((_originalIntersectingTrianglesList[i].Length * 2 / 3), Allocator.TempJob);
+                _edgesToVertices[i] = new NativeHashMap<Edge, NewVertexInfo>(_originalIntersectingTrianglesList[i].Length * 2 / 3, Allocator.TempJob);
                 _halfNewTrianglesLeft[i] = new NativeQueue<HalfNewTriangle>(Allocator.TempJob);
                 _halfNewTrianglesRight[i] = new NativeQueue<HalfNewTriangle>(Allocator.TempJob);
 
@@ -465,10 +466,12 @@ namespace Cutting
             //add new triangles and edges
             _edgesToLeft = new NativeHashMap<int, int>[_subMeshCount];
             _edgesToRight = new NativeHashMap<int, int>[_subMeshCount];
-            for (int i = 0; i < _subMeshCount; i++)
+            for (var i = 0; i < _subMeshCount; i++)
             {
-                _edgesToLeft[i] = new NativeHashMap<int, int>(_originalIntersectingTrianglesList[i].Length * 2, Allocator.TempJob);
-                _edgesToRight[i] = new NativeHashMap<int, int>(_originalIntersectingTrianglesList[i].Length * 2, Allocator.TempJob);
+                var length = _originalIntersectingTrianglesList[i].Length * 2;
+                
+                _edgesToLeft[i] = new NativeHashMap<int, int>(length, Allocator.TempJob);
+                _edgesToRight[i] = new NativeHashMap<int, int>(length, Allocator.TempJob);
 
                 var addEdgeTrianglesAndEdges = new AddEdgeTrianglesAndEdgesJob
                 {
@@ -505,7 +508,7 @@ namespace Cutting
 
             //translate vertices coordinates to plane coordinates
             _edgeVerticesOnPlane = new NativeList<float2>[_subMeshCount];
-            _edgeVertices = new NativeArray<VertexInfo>[_subMeshCount];
+            _edgeVertices = new NativeArray<NewVertexInfo>[_subMeshCount];
             for (var i = 0; i < _subMeshCount; i++)
             {
                 _edgeVerticesOnPlane[i] = new NativeList<float2>(_intersectedEdges[i].Length, Allocator.TempJob);

@@ -9,7 +9,7 @@ namespace Cutting.Jobs
     [BurstCompile]
     public struct CopyCutSurfaceTrianglesAndVerticesJob : IJob
     {
-        [ReadOnly] public NativeArray<VertexInfo> edgeVertices;
+        [ReadOnly] public NativeArray<NewVertexInfo> edgeVertices;
         [ReadOnly] public NativeArray<int> cutSurfaceTriangles;
 
         [WriteOnly] public NativeList<float3> sideVertices, sideNormals;
@@ -26,9 +26,9 @@ namespace Cutting.Jobs
             //copy vertices
             for (var i = 0; i < edgeVertices.Length; i++)
             {
-                // sideVertices.Add(edgeVertices[i].vertex);
-                // sideNormals.Add(normal);
-                // sideUVs.Add(edgeVertices[i].uv);
+                sideVertices.Add(edgeVertices[i].vertex);
+                sideNormals.Add(normal);
+                sideUVs.Add(edgeVertices[i].uv);
             }
             //copy triangles
             if (inverseOrder)

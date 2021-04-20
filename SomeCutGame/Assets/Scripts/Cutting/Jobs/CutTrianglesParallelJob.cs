@@ -15,7 +15,7 @@ namespace Cutting.Jobs
         [ReadOnly] public NativeList<int> triangles;
         [ReadOnly] public NativeArray<Side> sideIDs;
 
-        [WriteOnly] public NativeHashMap<Edge, VertexInfo>.ParallelWriter edgesToVertices;
+        [WriteOnly] public NativeHashMap<Edge, NewVertexInfo>.ParallelWriter edgesToVertices;
         [WriteOnly] public NativeQueue<HalfNewTriangle>.ParallelWriter leftHalfTriangles, rightHalfTriangles;
 
         public void Execute(int index)
@@ -115,15 +115,15 @@ namespace Cutting.Jobs
             }
         }
 
-        private VertexInfo GetNewVertex(Edge edge)
+        private NewVertexInfo GetNewVertex(Edge edge)
         {
-            var newVertex = new VertexInfo();
+            var newVertex = new NewVertexInfo();
 
             var relation = FindIntersectionPosOnSegment(vertices[edge.a], vertices[edge.b]);
 
-            // newVertex.vertex = math.lerp(vertices[edge.a], vertices[edge.b], relation);
-            // newVertex.normal = math.lerp(normals[edge.a], normals[edge.b], relation);
-            // newVertex.uv = math.lerp(uvs[edge.a], uvs[edge.b], relation);
+            newVertex.vertex = math.lerp(vertices[edge.a], vertices[edge.b], relation);
+            newVertex.normal = math.lerp(normals[edge.a], normals[edge.b], relation);
+            newVertex.uv = math.lerp(uvs[edge.a], uvs[edge.b], relation);
 
             return newVertex;
         }

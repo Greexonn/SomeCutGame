@@ -10,7 +10,7 @@ namespace Cutting.Jobs
     public struct AddEdgeVerticesJob : IJob
     {
         [ReadOnly] public NativeArray<Edge> edges;
-        [ReadOnly] public NativeHashMap<Edge, VertexInfo> edgesToVertices;
+        [ReadOnly] public NativeHashMap<Edge, NewVertexInfo> edgesToVertices;
 
         [ReadOnly] public int startVertexCount;
 
@@ -28,9 +28,9 @@ namespace Cutting.Jobs
 
                 //add vertex info
                 var vertex = edgesToVertices[edges[i]];
-                // sideVertices.Add(vertex.vertex);
-                // sideNormals.Add(vertex.normal);
-                // sideUVs.Add(vertex.uv);
+                sideVertices.Add(vertex.vertex);
+                sideNormals.Add(vertex.normal);
+                sideUVs.Add(vertex.uv);
             }
         }
     }

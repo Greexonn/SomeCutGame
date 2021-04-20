@@ -12,15 +12,15 @@ namespace Cutting.Jobs
         [ReadOnly] public float3 planeXAxis;
         [ReadOnly] public float3 planeYAxis;
 
-        [ReadOnly] public NativeArray<VertexInfo> edgeVertices;
+        [ReadOnly] public NativeArray<NewVertexInfo> edgeVertices;
         [WriteOnly] public NativeArray<float2> edgeVerticesOnPlane;
 
         public void Execute(int index)
         {
-            // var x = math.dot(planeXAxis, edgeVertices[index].vertex);
-            // var y = math.dot(planeYAxis, edgeVertices[index].vertex);
+            var x = math.dot(planeXAxis, edgeVertices[index].vertex);
+            var y = math.dot(planeYAxis, edgeVertices[index].vertex);
 
-            // edgeVerticesOnPlane[index] = new float2(x, y);
+            edgeVerticesOnPlane[index] = new float2(x, y);
         }
     }
 }
