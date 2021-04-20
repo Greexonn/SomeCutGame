@@ -255,8 +255,8 @@ namespace Cutting
                 vertexCounts = _vertexCounts
             };
 
-            var dependency = setPartIndexesParallelJob.Schedule(verticesCount, getVertexesSideJobHandle);
-            _handles.Add(dependency);
+            var setPartIndexesJobHandle = setPartIndexesParallelJob.Schedule(verticesCount, getVertexesSideJobHandle);
+            _handles.Add(setPartIndexesJobHandle);
             
             //check triangles
             _triangleTypes = new NativeArray<Side>[_subMeshCount];
@@ -271,8 +271,9 @@ namespace Cutting
                     triangleTypes = _triangleTypes[i]
                 };
 
-                _handles.Add(checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, dependency));
-                _dependencies.Add(_handles[_handles.Length - 1]);
+                var handle = checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, getVertexesSideJobHandle);
+                _handles.Add(handle);
+                _dependencies.Add(handle);
             }
 
             //reassign triangles
@@ -298,7 +299,8 @@ namespace Cutting
                 };
             
                 //schedule job
-                _handles.Add(reassignTrianglesJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, _dependencies[i]));
+                var dependencyHandle = JobHandle.CombineDependencies(_dependencies[i], setPartIndexesJobHandle);
+                _handles.Add(reassignTrianglesJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, dependencyHandle));
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
             
