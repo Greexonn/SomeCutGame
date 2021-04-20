@@ -55,9 +55,10 @@ namespace Cutting
         private NativeArray<Edge>[] _intersectedEdges;
 
         private NativeArray<NewVertexInfo>[] _edgeVertices;
-        private NativeHashMap<int, int>[] _edgesToLeft, _edgesToRight;
+        private NativeArray<int>[] _edgesToLeft, _edgesToRight;
         private NativeList<float2>[] _edgeVerticesOnPlane;
         private NativeList<int>[] _sortedEdgeVertices;
+        private NativeArray<int>[] _vertexDoubleIds;
         private NativeList<int>[] _cutSurfaceTriangles;
 
         //job handle collections
@@ -149,7 +150,7 @@ namespace Cutting
             Debug.Log($"Split time: {_stopwatch.Elapsed.TotalMilliseconds}");
             FillCutEdge();
             Debug.Log($"Fill edge time: {_stopwatch.Elapsed.TotalMilliseconds}");
-            // FillHoles();
+            FillHoles();
             Debug.Log($"Fill holes time: {_stopwatch.Elapsed.TotalMilliseconds}");
             //
             DisposeTemporalContainers();
@@ -207,10 +208,11 @@ namespace Cutting
                 _intersectedEdges[i].Dispose();
                 _edgesToLeft[i].Dispose();
                 _edgesToRight[i].Dispose();
-                // _edgeVertices[i].Dispose();
-                // _edgeVerticesOnPlane[i].Dispose();
-                // _sortedEdgeVertices[i].Dispose();
-                // _cutSurfaceTriangles[i].Dispose();
+                _edgeVertices[i].Dispose();
+                _edgeVerticesOnPlane[i].Dispose();
+                _sortedEdgeVertices[i].Dispose();
+                _vertexDoubleIds[i].Dispose();
+                _cutSurfaceTriangles[i].Dispose();
             }
 
             //dispose job handle lists
@@ -465,14 +467,21 @@ namespace Cutting
             }
             
             //add new triangles and edges
-            _edgesToLeft = new NativeHashMap<int, int>[_subMeshCount];
-            _edgesToRight = new NativeHashMap<int, int>[_subMeshCount];
+            _edgesToLeft = new NativeArray<int>[_subMeshCount];
+            _edgesToRight = new NativeArray<int>[_subMeshCount];
             for (var i = 0; i < _subMeshCount; i++)
             {
                 var length = _originalIntersectingTrianglesList[i].Length * 2;
                 
-                _edgesToLeft[i] = new NativeHashMap<int, int>(length, Allocator.TempJob);
-                _edgesToRight[i] = new NativeHashMap<int, int>(length, Allocator.TempJob);
+                _edgesToLeft[i] = new NativeArray<int>(length, Allocator.TempJob);
+                _edgesToRight[i] = new NativeArray<int>(length, Allocator.TempJob);
+
+                // clear arrays
+                for (var j = 0; j < length; j++)
+                {
+                    _edgesToLeft[i][j] = -1;
+                    _edgesToRight[i][j] = -1;
+                }
                 
                 // resize lists
                 var leftNewTrisCount = _halfNewTrianglesLeft[i].Count;
@@ -490,8 +499,8 @@ namespace Cutting
                     originalIndexToPart = _originalIndexToPart,
                     edgeToSideVertex = _edgeVerticesToLeft[i],
                     halfNewTriangles = _halfNewTrianglesLeft[i].ToArray(Allocator.TempJob),
-                    edgesToLeft = _edgesToLeft[i].AsParallelWriter(),
-                    edgesToRight = _edgesToRight[i].AsParallelWriter(),
+                    edgesToLeft = _edgesToLeft[i],
+                    edgesToRight = _edgesToRight[i],
                     previousVertexCount = leftSideOriginalVertexCount,
                     startTrianglesIndex = leftOriginalTrianglesCount
                 };
@@ -536,25 +545,48 @@ namespace Cutting
                     edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray()
                 };
 
-                _handles.Add(translateCoordinates.Schedule(_edgesToVertices[i].Count(), (_intersectedEdges[i].Length / 10 + 1)));
+                _handles.Add(translateCoordinates.Schedule(_edgesToVertices[i].Count(), _intersectedEdges[i].Length / 10 + 1));
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
         
             //sort edge vertices
             _sortedEdgeVertices = new NativeList<int>[_subMeshCount];
+            _vertexDoubleIds = new NativeArray<int>[_subMeshCount];
             for (var i = 0; i < _subMeshCount; i++)
             {
-                _sortedEdgeVertices[i] = new NativeList<int>(_edgeVertices[i].Length, Allocator.TempJob);
-                _sortedEdgeVertices[i].ResizeUninitialized(_edgeVertices[i].Length);
-                var sortVerticesJob = new SortEdgeVerticesParallelJob
+                var edgeVertexCount = _edgeVertices[i].Length;
+                
+                _sortedEdgeVertices[i] = new NativeList<int>(edgeVertexCount, Allocator.TempJob);
+                _sortedEdgeVertices[i].ResizeUninitialized(edgeVertexCount);
+                _vertexDoubleIds[i] = new NativeArray<int>(edgeVertexCount, Allocator.TempJob);
+
+                var findDoublesParallelJob = new FindVertexOnPlaneDoublesParallelJob
                 {
-                    edgeVerticesOnPlane = _edgeVerticesOnPlane[i],
-                    sortedEdgeVertices = _sortedEdgeVertices[i],
+                    edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray(),
+                    vertexDoubleIds = _vertexDoubleIds[i]
+                };
+
+                var findDoublesJobHandle = findDoublesParallelJob.Schedule(edgeVertexCount, edgeVertexCount / JobsUtility.JobWorkerCount, _dependencies[i]);
+
+                var removeDoublesJob = new RemoveDoubleVerticesJob
+                {
+                    vertexDoubleIds = _vertexDoubleIds[i],
+                    edgeVertices = _edgeVerticesOnPlane[i],
                     edgesToLeft = _edgesToLeft[i],
                     edgesToRight = _edgesToRight[i]
                 };
 
-                _handles.Add(sortVerticesJob.Schedule(_dependencies[i]));
+                var removeDoublesJobHandle = removeDoublesJob.Schedule(edgeVertexCount, findDoublesJobHandle);
+
+                var sortVerticesParallelJob = new SortEdgeVerticesParallelJob
+                {
+                    edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray(),
+                    sortedEdgeVertices = _sortedEdgeVertices[i].AsArray()
+                };
+
+                var sortVerticesJobHandle = sortVerticesParallelJob.Schedule(edgeVertexCount, edgeVertexCount / JobsUtility.JobWorkerCount, removeDoublesJobHandle);
+                
+                _handles.Add(sortVerticesJobHandle);
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
 

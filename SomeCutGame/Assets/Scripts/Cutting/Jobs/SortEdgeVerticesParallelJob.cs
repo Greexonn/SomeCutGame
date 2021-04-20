@@ -6,85 +6,48 @@ using Unity.Mathematics;
 
 namespace Cutting.Jobs
 {
+    /// <summary>
+    /// input array should be cleared from doubles
+    /// </summary>
     [BurstCompile]
-    public struct SortEdgeVerticesParallelJob : IJob
+    public struct SortEdgeVerticesParallelJob : IJobParallelFor
     {
-        public NativeList<float2> edgeVerticesOnPlane;
-        public NativeList<int> sortedEdgeVertices;
-
-        public NativeHashMap<int, int> edgesToLeft, edgesToRight;
-
+        [ReadOnly] public NativeArray<float2> edgeVerticesOnPlane;
+        
+        [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<int> sortedEdgeVertices;
+        
         private const float Difference = 0.000001f;
-
-        public void Execute()
+        
+        public void Execute(int index)
         {
-            for (var i = 0; i < edgeVerticesOnPlane.Length; i++)
-            {
-                var vertex = edgeVerticesOnPlane[i];
-                var place = 0;
-                var doubles = 1;
-                for (var j = 0; j < edgeVerticesOnPlane.Length; j++)
-                {
-                    if (i == j) 
-                        continue;
+            if (index >= edgeVerticesOnPlane.Length)
+                return;
             
-                    var vertexB = edgeVerticesOnPlane[j];
+            var vertex = edgeVerticesOnPlane[index];
+            var place = 0;
 
-                    if (vertex.x > vertexB.x)
-                    {
-                        place++;
-                    }
-                    else if (Math.Abs(vertex.x - vertexB.x) < Difference)
-                    {
-                        switch (vertex.y < vertexB.y)
-                        {
-                            case true:
-                                place++;
-                                break;
-                            default:
-                            {
-                                if (Math.Abs(vertex.y - vertexB.y) < Difference)
-                                {
-                                    //if we found doubled vertex we connect original vertex to doubled connected vertex
-                                    //check free side ou current vertex
-                                    if (!edgesToLeft.ContainsKey(i)) //if left free
-                                    {
-                                        ConnectVertex(i, j, edgesToLeft);
-                                    }
-                                    if (!edgesToRight.ContainsKey(i)) //if right free
-                                    {
-                                        ConnectVertex(i, j, edgesToRight);
-                                    }
-                                    //double found
-                                    doubles++;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-                //store ids in place
-                for (var p = 0; p < doubles; p++)
+            for (var j = 0; j < edgeVerticesOnPlane.Length; j++)
+            {
+                if (index == j)
+                    continue;
+                
+                var vertexB = edgeVerticesOnPlane[j];
+
+                var biggerX = vertex.x > vertexB.x;
+                var smallerY = vertex.y < vertexB.y;
+
+                if (biggerX)
                 {
-                    sortedEdgeVertices[place + p] = i;
+                    place++;
+                }
+                else if (Math.Abs(vertex.x - vertexB.x) < Difference)
+                {
+                    if (smallerY)
+                        place++;
                 }
             }
-        }
-
-        private void ConnectVertex(int vertexID, int doubleID, NativeHashMap<int, int> side)
-        {
-            if (edgesToLeft.TryGetValue(doubleID, out var connected))
-            {
-                side.TryAdd(vertexID, connected);
-                //remove double connection
-                edgesToLeft.Remove(doubleID);
-            }
-            else if (edgesToRight.TryGetValue(doubleID, out connected))
-            {
-                side.TryAdd(vertexID, connected);
-                //remove double connection
-                edgesToRight.Remove(doubleID);
-            }
+            
+            sortedEdgeVertices[place] = index;
         }
     }
 }

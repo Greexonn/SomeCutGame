@@ -8,7 +8,7 @@ namespace Cutting.Jobs
     [BurstCompile]
     public struct TriangulateFrameJob : IJob
     {
-        public NativeHashMap<int, int> edgesToLeft, edgesToRight;
+        public NativeArray<int> edgesToLeft, edgesToRight;
 
         [ReadOnly] public NativeArray<int> sortedEdgeVertices;
         [ReadOnly] public NativeArray<float2> edgeVerticesOnPlane;
@@ -16,11 +16,13 @@ namespace Cutting.Jobs
         [WriteOnly] public NativeList<int> cutSurfaceTriangles;
 
         private int _tipIndex;
+        private int _maxIndex;
 
         public void Execute()
         {
             _tipIndex = 0;
-            while (_tipIndex < (sortedEdgeVertices.Length - 1))
+            _maxIndex = edgeVerticesOnPlane.Length - 1;
+            while (_tipIndex <= _maxIndex)
             {
                 FindTriangle();
             }
@@ -28,12 +30,13 @@ namespace Cutting.Jobs
 
         private void FindTriangle()
         {
-            //
-            NativeHashMap<int, int> _edgesToLeft, _edgesToRight;
+            NativeArray<int> localEdgesToLeft, localEdgesToRight;
 
             var tip = sortedEdgeVertices[_tipIndex];
-
-            if (!edgesToLeft.TryGetValue(tip, out var left) || !edgesToRight.TryGetValue(tip, out var right))
+            
+            var left = edgesToLeft[tip];
+            var right = edgesToRight[tip];
+            if (left < 0 || right < 0 || left > _maxIndex || right > _maxIndex)
             {
                 _tipIndex++;
                 return;
@@ -47,13 +50,13 @@ namespace Cutting.Jobs
                 left = right;
                 right = buff;
                 //swap
-                _edgesToLeft = edgesToRight;
-                _edgesToRight = edgesToLeft;
+                localEdgesToLeft = edgesToRight;
+                localEdgesToRight = edgesToLeft;
             }
             else
             {
-                _edgesToLeft = edgesToLeft;
-                _edgesToRight = edgesToRight;
+                localEdgesToLeft = edgesToLeft;
+                localEdgesToRight = edgesToRight;
             }
 
             //store triangle
@@ -61,13 +64,13 @@ namespace Cutting.Jobs
             cutSurfaceTriangles.Add(left);
             cutSurfaceTriangles.Add(right);
             //delete old edges
-            _edgesToLeft.Remove(tip);
-            _edgesToRight.Remove(tip);
-            _edgesToRight.Remove(left);
-            _edgesToLeft.Remove(right);
+            localEdgesToLeft[tip] = -1;
+            localEdgesToRight[tip] = -1;
+            localEdgesToRight[left] = -1;
+            localEdgesToLeft[right] = -1;
             //add new edges
-            _edgesToLeft.TryAdd(right, left);
-            _edgesToRight.TryAdd(left, right);
+            localEdgesToLeft[right] = left;
+            localEdgesToRight[left] = right;
             //increase tip index
             _tipIndex++;
         }
@@ -78,7 +81,7 @@ namespace Cutting.Jobs
             var b = edgeVerticesOnPlane[bId];
             var c = edgeVerticesOnPlane[cId];
 
-            for (var i = (_tipIndex + 1); i < boundIndex; i++)
+            for (var i = _tipIndex + 1; i < boundIndex; i++)
             {
                 if (sortedEdgeVertices[i] == bId || sortedEdgeVertices[i] == cId) 
                     continue;

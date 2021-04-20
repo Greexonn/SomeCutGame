@@ -16,7 +16,7 @@ namespace Cutting.Jobs
         public int startTrianglesIndex;
         
         [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<int> sideTriangles;
-        [WriteOnly] public NativeHashMap<int, int>.ParallelWriter edgesToLeft, edgesToRight;
+        [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<int> edgesToLeft, edgesToRight;
 
         private int _a, _b;
         
@@ -42,8 +42,8 @@ namespace Cutting.Jobs
             // if we have 2 new vertices we add them to edges hash-maps
             _a -= previousVertexCount;
             _b -= previousVertexCount;
-            edgesToLeft.TryAdd(_a, _b);
-            edgesToRight.TryAdd(_b, _a);
+            edgesToLeft[_a] = _b;
+            edgesToRight[_b] = _a;
         }
     }
 }

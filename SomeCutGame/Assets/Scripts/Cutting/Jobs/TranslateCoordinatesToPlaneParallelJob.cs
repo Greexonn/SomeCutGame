@@ -9,16 +9,19 @@ namespace Cutting.Jobs
     [BurstCompile]
     public struct TranslateCoordinatesToPlaneParallelJob : IJobParallelFor
     {
-        [ReadOnly] public float3 planeXAxis;
-        [ReadOnly] public float3 planeYAxis;
+        public float3 planeXAxis;
+        public float3 planeYAxis;
 
         [ReadOnly] public NativeArray<NewVertexInfo> edgeVertices;
+        
         [WriteOnly] public NativeArray<float2> edgeVerticesOnPlane;
 
         public void Execute(int index)
         {
-            var x = math.dot(planeXAxis, edgeVertices[index].vertex);
-            var y = math.dot(planeYAxis, edgeVertices[index].vertex);
+            var vertexPos = edgeVertices[index].vertex;
+            
+            var x = math.dot(planeXAxis, vertexPos);
+            var y = math.dot(planeYAxis, vertexPos);
 
             edgeVerticesOnPlane[index] = new float2(x, y);
         }

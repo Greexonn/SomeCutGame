@@ -343,7 +343,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2939729f11b08154b8266d2c44db6e5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _cutMaterial: {fileID: 0}
+  _cutMaterial: {fileID: 2100000, guid: 5545d413a93829b4b97993c708f7282b, type: 2}
   _useSimpleColliders: 0
 --- !u!1 &170953412
 GameObject:
@@ -582,7 +582,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2939729f11b08154b8266d2c44db6e5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _cutMaterial: {fileID: 0}
+  _cutMaterial: {fileID: 2100000, guid: 5545d413a93829b4b97993c708f7282b, type: 2}
   _useSimpleColliders: 0
 --- !u!65 &584878229
 BoxCollider:
@@ -7008,14 +7008,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1280271763501631}
-  m_LocalRotation: {x: 0.52590406, y: 0.46737853, z: 0.4412858, w: 0.5570001}
+  m_LocalRotation: {x: 0.3481221, y: 0.25428277, z: 0.5917108, w: 0.6811972}
   m_LocalPosition: {x: 0, y: 3.66, z: -0.367}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_Children:
   - {fileID: 2005560136}
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 9.983001, y: 89.420006, z: 86.66}
+  m_LocalEulerAnglesHint: {x: 9.983001, y: 50.36, z: 86.66}
 --- !u!23 &23444126351333713
 MeshRenderer:
   m_ObjectHideFlags: 0
