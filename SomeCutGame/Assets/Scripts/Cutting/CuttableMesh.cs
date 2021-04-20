@@ -67,15 +67,13 @@ namespace Cutting
         private Vector3 _cuttingPlaneNormal;
         private Vector3 _cuttingPlaneCenter;
 
-        private float3 _planeCenter;
-        private float3 _planeNormal;
         private float3 _planeXAxis;
         private float3 _planeYAxis;
 
         //
         private bool _isPreSet;
 
-        private Stopwatch _stopwatch = new Stopwatch();
+        private readonly Stopwatch _stopwatch = new Stopwatch();
 
         private void Start()
         {
@@ -132,8 +130,6 @@ namespace Cutting
             _cuttingPlane = new Plane(transform.InverseTransformDirection(planeNormal), transform.InverseTransformPoint(contactPoint));
             _cuttingPlaneNormal = _cuttingPlane.normal;
             _cuttingPlaneCenter = transform.InverseTransformPoint(contactPoint);
-            _planeCenter = new float3(_cuttingPlaneCenter);
-            _planeNormal = new float3(_cuttingPlaneNormal);
             _planeXAxis = new float3(transform.InverseTransformDirection(planeUp));
             _planeYAxis = new float3(transform.InverseTransformDirection(planeLeft));
 
@@ -148,20 +144,11 @@ namespace Cutting
             //perform cut
             AllocateTemporalContainers();
             Debug.Log($"Allocation time: {_stopwatch.Elapsed.TotalMilliseconds}");
-            _stopwatch.Stop();
-            _stopwatch.Reset();
-            _stopwatch.Start();
             //
             SplitMesh();
             Debug.Log($"Split time: {_stopwatch.Elapsed.TotalMilliseconds}");
-            _stopwatch.Stop();
-            _stopwatch.Reset();
-            _stopwatch.Start();
             FillCutEdge();
             Debug.Log($"Fill edge time: {_stopwatch.Elapsed.TotalMilliseconds}");
-            _stopwatch.Stop();
-            _stopwatch.Reset();
-            _stopwatch.Start();
             // FillHoles();
             Debug.Log($"Fill holes time: {_stopwatch.Elapsed.TotalMilliseconds}");
             //
@@ -383,7 +370,7 @@ namespace Cutting
                     targetBuffer = _originalIntersectingTrianglesList[i]
                 };
 
-                _handles.Add(copyTrianglesToList.Schedule(originalLength, 10, previousCombined));
+                _handles.Add(copyTrianglesToList.Schedule(originalLength, originalLength / JobsUtility.JobWorkerCount, previousCombined));
                 _dependencies.Add(_handles[_handles.Length - 1]);
             }
 
@@ -391,7 +378,7 @@ namespace Cutting
             JobHandle.CompleteAll(_handles);
             _handles.Clear();
 
-            //iterate throuhg all intersected triangles in every sub-mesh, add edge vertices and half-new triangles
+            //iterate through all intersected triangles in every sub-mesh, add edge vertices and half-new triangles
             _edgesToVertices = new NativeHashMap<Edge, NewVertexInfo>[_subMeshCount];
             _halfNewTrianglesLeft = new NativeQueue<HalfNewTriangle>[_subMeshCount];
             _halfNewTrianglesRight = new NativeQueue<HalfNewTriangle>[_subMeshCount];
@@ -415,7 +402,7 @@ namespace Cutting
                     rightHalfTriangles = _halfNewTrianglesRight[i].AsParallelWriter()
                 };
 
-                _handles.Add(cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, _originalIntersectingTrianglesList[i].Length / 3 / 10 + 1, _dependencies[i]));
+                _handles.Add(cutTriangles.Schedule(_originalIntersectingTrianglesList[i].Length / 3, _originalIntersectingTrianglesList[i].Length / 3 / JobsUtility.JobWorkerCount, _dependencies[i]));
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
 
@@ -436,32 +423,42 @@ namespace Cutting
                 _edgeVerticesToRight[i] = new NativeHashMap<Edge, int>(_edgesToVertices[i].Count(), Allocator.TempJob);
 
                 _intersectedEdges[i] = _edgesToVertices[i].GetKeyArray(Allocator.TempJob);
+                
+                // resize lists
+                var edgeCount = _intersectedEdges[i].Length;
+                var leftStartIndex = _leftPart.vertices.Length;
+                var rightStartIndex = _rightPart.vertices.Length;
+                var leftLength = leftStartIndex + edgeCount;
+                var rightLength = rightStartIndex + edgeCount;
+                
+                _leftPart.ResizeVertices(leftLength);
+                _rightPart.ResizeVertices(rightLength);
 
-                var addEdgeVertices = new AddEdgeVerticesJob
+                var addEdgeVertices = new AddEdgeVerticesParallelJob
                 {
                     edges = _intersectedEdges[i],
                     edgesToVertices = _edgesToVertices[i],
-                    startVertexCount = leftSideVertexCount,
-                    sideVertices = _leftPart.vertices,
-                    sideNormals = _leftPart.normals,
-                    sideUVs = _leftPart.uvs,
-                    edgeVerticesToSide = _edgeVerticesToLeft[i]
+                    startVertexCount = leftStartIndex,
+                    sideVertices = _leftPart.vertices.AsArray(),
+                    sideNormals = _leftPart.normals.AsArray(),
+                    sideUVs = _leftPart.uvs.AsArray(),
+                    edgeToSideVertex = _edgeVerticesToLeft[i].AsParallelWriter()
                 };
 
-                _handles.Add(addEdgeVertices.Schedule(previousHandle));
+                _handles.Add(addEdgeVertices.Schedule(edgeCount, edgeCount / JobsUtility.JobWorkerCount, previousHandle));
 
-                addEdgeVertices = new AddEdgeVerticesJob
+                addEdgeVertices = new AddEdgeVerticesParallelJob
                 {
                     edges = _intersectedEdges[i],
                     edgesToVertices = _edgesToVertices[i],
-                    startVertexCount = _rightPart.vertices.Length,
-                    sideVertices = _rightPart.vertices,
-                    sideNormals = _rightPart.normals,
-                    sideUVs = _rightPart.uvs,
-                    edgeVerticesToSide = _edgeVerticesToRight[i]
+                    startVertexCount = rightStartIndex,
+                    sideVertices = _rightPart.vertices.AsArray(),
+                    sideNormals = _rightPart.normals.AsArray(),
+                    sideUVs = _rightPart.uvs.AsArray(),
+                    edgeToSideVertex = _edgeVerticesToRight[i].AsParallelWriter()
                 };
 
-                _handles.Add(addEdgeVertices.Schedule(previousHandle));
+                _handles.Add(addEdgeVertices.Schedule(edgeCount, edgeCount / JobsUtility.JobWorkerCount, previousHandle));
 
                 _dependencies[i] = JobHandle.CombineDependencies(_handles[_handles.Length - 1], _handles[_handles.Length - 2]);
                 previousHandle = _dependencies[i];

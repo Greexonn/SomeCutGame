@@ -24,6 +24,11 @@ namespace Cutting.Jobs
             var vertexA = triangles[currentStartIndex];
             var vertexB = triangles[currentStartIndex + 1];
             var vertexC = triangles[currentStartIndex + 2];
+            
+            // sides
+            var aSide = sideIDs[vertexA];
+            var bSide = sideIDs[vertexB];
+            var cSide = sideIDs[vertexC];
 
             //create edges
             var ab = new Edge{a = vertexA, b = vertexB};
@@ -32,17 +37,17 @@ namespace Cutting.Jobs
 
             //check every edge to find one that is not intersected
             //check a-b
-            if (sideIDs[ab.a] == sideIDs[ab.b])
+            if (aSide == bSide)
             {
                 CutTriangle(ab, bc, ca);
             }
             //check b-c
-            else if (sideIDs[bc.a] == sideIDs[bc.b])
+            else if (bSide == cSide)
             {
                 CutTriangle(bc, ca, ab);
             }
             //check c-a
-            else if (sideIDs[ca.a] == sideIDs[ca.b])
+            else if (cSide == aSide)
             {
                 CutTriangle(ca, ab, bc);
             }
@@ -117,13 +122,14 @@ namespace Cutting.Jobs
 
         private NewVertexInfo GetNewVertex(Edge edge)
         {
-            var newVertex = new NewVertexInfo();
-
             var relation = FindIntersectionPosOnSegment(vertices[edge.a], vertices[edge.b]);
 
-            newVertex.vertex = math.lerp(vertices[edge.a], vertices[edge.b], relation);
-            newVertex.normal = math.lerp(normals[edge.a], normals[edge.b], relation);
-            newVertex.uv = math.lerp(uvs[edge.a], uvs[edge.b], relation);
+            var newVertex = new NewVertexInfo
+            {
+                vertex = math.lerp(vertices[edge.a], vertices[edge.b], relation),
+                normal = math.lerp(normals[edge.a], normals[edge.b], relation),
+                uv = math.lerp(uvs[edge.a], uvs[edge.b], relation)
+            };
 
             return newVertex;
         }

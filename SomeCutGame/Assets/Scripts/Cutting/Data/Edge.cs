@@ -8,20 +8,10 @@ namespace Cutting.Data
 
         public bool Equals(Edge other)
         {
-            if (a == other.a)
-            {
-                if (b == other.b)
-                    return true;
-            }
-            else
-            {
-                if (a != other.b) 
-                    return false;
-                if (b == other.a)
-                    return true;
-            }
+            var firstCase = a == other.a && b == other.b;
+            var secondCase = a == other.b && b == other.a;
 
-            return false;
+            return firstCase | secondCase;
         }
 
         public override int GetHashCode() => a.GetHashCode() + b.GetHashCode();
