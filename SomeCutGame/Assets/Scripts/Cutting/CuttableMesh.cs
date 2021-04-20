@@ -4,6 +4,7 @@ using Cutting.Data;
 using Cutting.Jobs;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
@@ -244,7 +245,7 @@ namespace Cutting
                 sideIds = _sideIds
             };
 
-            var getVertexesSideJobHandle = getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, verticesCount / 10 + 1);
+            var getVertexesSideJobHandle = getVertexesSideJob.Schedule(_originalGeneratedMesh.vertices.Length, verticesCount / JobsUtility.JobWorkerCount);
             _handles.Add(getVertexesSideJobHandle);
 
             //set part indexes
@@ -271,7 +272,7 @@ namespace Cutting
                     triangleTypes = _triangleTypes[i]
                 };
 
-                var handle = checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, getVertexesSideJobHandle);
+                var handle = checkTrianglesParallelJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / JobsUtility.JobWorkerCount, getVertexesSideJobHandle);
                 _handles.Add(handle);
                 _dependencies.Add(handle);
             }
@@ -292,15 +293,15 @@ namespace Cutting
                 {
                     triangleIndexes = _originalGeneratedMesh.triangles[i].AsArray(),
                     triangleTypes = _triangleTypes[i],
+                    originalIndexToPart = _originalIndexToPart,
                     leftTriangleIndexes = _triangleIndexesLeft[i].AsParallelWriter(),
                     rightTriangleIndexes = _triangleIndexesRight[i].AsParallelWriter(),
-                    intersectingTriangleIndexes = _originalIntersectingTriangles[i].AsParallelWriter(),
-                    originalIndexToPart = _originalIndexToPart
+                    intersectingTriangleIndexes = _originalIntersectingTriangles[i].AsParallelWriter()
                 };
             
                 //schedule job
                 var dependencyHandle = JobHandle.CombineDependencies(_dependencies[i], setPartIndexesJobHandle);
-                _handles.Add(reassignTrianglesJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / 10 + 1, dependencyHandle));
+                _handles.Add(reassignTrianglesJob.Schedule(_triangleTypes[i].Length, _triangleTypes[i].Length / JobsUtility.JobWorkerCount, dependencyHandle));
                 _dependencies[i] = _handles[_handles.Length - 1];
             }
             
@@ -327,7 +328,7 @@ namespace Cutting
                 leftUVs = _leftPart.uvs
             };
 
-            var copyMeshDataHandle = copyMeshDataJob.Schedule(verticesCount, 10);
+            var copyMeshDataHandle = copyMeshDataJob.Schedule(verticesCount, verticesCount / JobsUtility.JobWorkerCount);
             _dependencies.Add(copyMeshDataHandle);
 
             //assign triangles to mesh
@@ -346,7 +347,7 @@ namespace Cutting
                     targetBuffer = _rightPart.triangles[i]
                 };
 
-                var handle = copyTrianglesJob.Schedule(rightLenght, 10);
+                var handle = copyTrianglesJob.Schedule(rightLenght, rightLenght / JobsUtility.JobWorkerCount);
                 _handles.Add(handle);
                 _dependencies.Add(handle);
                 
@@ -356,7 +357,7 @@ namespace Cutting
                     targetBuffer = _leftPart.triangles[i]
                 };
 
-                handle = copyTrianglesJob.Schedule(leftLength, 10);
+                handle = copyTrianglesJob.Schedule(leftLength, leftLength / JobsUtility.JobWorkerCount);
                 _handles.Add(handle);
                 _dependencies.Add(handle);
             }

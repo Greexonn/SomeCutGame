@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cutMaterial: {fileID: 2100000, guid: 5545d413a93829b4b97993c708f7282b, type: 2}
-  _useSimpleColliders: 1
+  _useSimpleColliders: 0
 --- !u!64 &41937576
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1964,7 +1964,7 @@ Rigidbody:
   m_AngularDrag: 0.05
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 1
+  m_Interpolate: 2
   m_Constraints: 126
   m_CollisionDetection: 2
 --- !u!1 &2040918147

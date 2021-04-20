@@ -10,6 +10,7 @@ namespace Cutting.Jobs
     {
         [ReadOnly] public NativeArray<Side> sideIDs;
         [ReadOnly] public NativeArray<int> triangleIndexes;
+        
         [WriteOnly] public NativeArray<Side> triangleTypes;
 
         public void Execute(int index)
