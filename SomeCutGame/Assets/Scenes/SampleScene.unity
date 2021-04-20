@@ -156,7 +156,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2939729f11b08154b8266d2c44db6e5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _cutMaterial: {fileID: 0}
+  _cutMaterial: {fileID: 2100000, guid: 5545d413a93829b4b97993c708f7282b, type: 2}
+  _useSimpleColliders: 1
 --- !u!64 &41937576
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -343,6 +344,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cutMaterial: {fileID: 0}
+  _useSimpleColliders: 0
 --- !u!1 &170953412
 GameObject:
   m_ObjectHideFlags: 0
@@ -581,6 +583,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _cutMaterial: {fileID: 0}
+  _useSimpleColliders: 0
 --- !u!65 &584878229
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1224,7 +1227,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2939729f11b08154b8266d2c44db6e5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _cutMaterial: {fileID: 0}
+  _cutMaterial: {fileID: 2100000, guid: 5545d413a93829b4b97993c708f7282b, type: 2}
+  _useSimpleColliders: 1
 --- !u!64 &888339155
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1296,7 +1300,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 888339153}
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 1.92, y: 0.33, z: -1.37}
+  m_LocalPosition: {x: 1.46, y: 0.33, z: -1.37}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -1470,9 +1474,9 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_RenderPostProcessing: 1
-  m_Antialiasing: 2
+  m_Antialiasing: 0
   m_AntialiasingQuality: 2
-  m_StopNaN: 1
+  m_StopNaN: 0
   m_Dithering: 0
   m_ClearDepth: 1
   m_AllowXRRendering: 1

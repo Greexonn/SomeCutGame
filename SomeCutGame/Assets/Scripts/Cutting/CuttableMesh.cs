@@ -12,7 +12,8 @@ namespace Cutting
 {
     public class CuttableMesh : MonoBehaviour
     {
-        public Material _cutMaterial;
+        [SerializeField] private Material _cutMaterial;
+        [SerializeField] private bool _useSimpleColliders;
 
         private Plane _cuttingPlane;
 
@@ -629,7 +630,14 @@ namespace Cutting
             materials.Add(_cutMaterial != null ? _cutMaterial : materials[0]);
             gameObject.GetComponent<MeshRenderer>().materials = materials.ToArray();
             Destroy(GetComponent<Collider>());
-            gameObject.AddComponent<MeshCollider>().convex = true;
+            if (_useSimpleColliders)
+            {
+                gameObject.AddComponent<BoxCollider>();
+            }
+            else
+            {
+                gameObject.AddComponent<MeshCollider>().convex = true;
+            }
             var currentRb = gameObject.GetComponent<Rigidbody>();
             if (currentRb == null)
             {
@@ -652,7 +660,14 @@ namespace Cutting
                 //set materials
                 partRenderer.materials = materials.ToArray();
 
-                part.AddComponent<MeshCollider>().convex = true;
+                if (_useSimpleColliders)
+                {
+                    part.AddComponent<BoxCollider>();
+                }
+                else
+                {
+                    part.AddComponent<MeshCollider>().convex = true;
+                }
                 part.AddComponent<Rigidbody>();
             
                 //
