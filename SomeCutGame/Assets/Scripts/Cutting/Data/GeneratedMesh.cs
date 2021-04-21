@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -10,17 +11,17 @@ namespace Cutting.Data
         public NativeList<float3> vertices;
         public NativeList<float3> normals;
         public NativeList<float2> uvs;
-        public readonly NativeList<int>[] triangles;
+        public readonly List<NativeList<int>> triangles;
 
         public GeneratedMesh(int subMeshCount)
         {
             vertices = new NativeList<float3>(Allocator.Persistent);
             normals = new NativeList<float3>(Allocator.Persistent);
             uvs = new NativeList<float2>(Allocator.Persistent);
-            triangles = new NativeList<int>[subMeshCount + 1];
+            triangles = new List<NativeList<int>>(subMeshCount + 1);
             for (var i = 0; i < subMeshCount + 1; i++)
             {
-                triangles[i] = new NativeList<int>(Allocator.Persistent);
+                triangles.Add(new NativeList<int>(Allocator.Persistent));
             }
         }
 
@@ -47,7 +48,7 @@ namespace Cutting.Data
             vertices.Dispose();
             normals.Dispose();
             uvs.Dispose();
-            for (var i = 0; i < triangles.Length; i++)
+            for (var i = 0; i < triangles.Count; i++)
             {
                 triangles[i].Dispose();
             }
@@ -56,35 +57,39 @@ namespace Cutting.Data
         public Mesh GetMesh()
         {
             var mesh = new Mesh();
+            
+            CheckSubMeshes();
 
             //set 32bit index format if needed
             if (vertices.Length > 65535)
             {
                 mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             }
+            
+            mesh.SetVertices(vertices.AsArray());
+            mesh.SetNormals(normals.AsArray());
+            mesh.SetUVs(0, uvs.AsArray());
+            
+            mesh.subMeshCount = triangles.Count;
 
-            var meshVertices = new Vector3[vertices.Length];
-            var meshNormals = new Vector3[normals.Length];
-            var meshUVs = new Vector2[uvs.Length];
-            for (var i = 0; i < vertices.Length; i++)
-            {
-                meshVertices[i] = new Vector3(vertices[i].x, vertices[i].y, vertices[i].z);
-                meshNormals[i] = new Vector3(normals[i].x, normals[i].y, normals[i].z);
-                meshUVs[i] = new Vector2(uvs[i].x, uvs[i].y);
-            }
-
-            mesh.vertices = meshVertices;
-            mesh.normals = meshNormals;
-            mesh.uv = meshUVs;
-            mesh.subMeshCount = triangles.Length;
-    
             //set triangles
-            for (var i = 0; i < triangles.Length; i++)
+            for (var i = 0; i < triangles.Count; i++)
             {
-                mesh.SetTriangles(triangles[i].ToArray(), i);
+                mesh.SetIndices(triangles[i].AsArray(), MeshTopology.Triangles, i);
             }
 
             return mesh;
+        }
+
+        private void CheckSubMeshes()
+        {
+            for (var i = 0; i < triangles.Count; i++)
+            {
+                if (triangles[i].Length == 0)
+                {
+                    triangles.RemoveAt(i--);
+                }
+            }
         }
     }
 }

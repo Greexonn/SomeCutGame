@@ -599,6 +599,15 @@ namespace Cutting
 
                 var removeDoublesJobHandle = removeDoublesJob.Schedule(edgeVertexCount, findDoublesJobHandle);
 
+                // var connectEndsJob = new ConnectEndVerticesJob
+                // {
+                //     verticesOnPlane = _edgeVerticesOnPlane[i],
+                //     edgesToLeft = _edgesToLeft[i],
+                //     edgesToRight = _edgesToRight[i]
+                // };
+
+                // var connectEndsJobHandle = connectEndsJob.Schedule(removeDoublesJobHandle);
+
                 var sortVerticesParallelJob = new SortEdgeVerticesParallelJob
                 {
                     edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray(),
@@ -606,9 +615,10 @@ namespace Cutting
                 };
 
                 var sortVerticesJobHandle = sortVerticesParallelJob.Schedule(edgeVertexCount, edgeVertexCount / JobsUtility.JobWorkerCount, removeDoublesJobHandle);
-                
-                _handles.Add(sortVerticesJobHandle);
-                _dependencies[i] = sortVerticesJobHandle;
+
+                var handle = JobHandle.CombineDependencies(sortVerticesJobHandle, sortVerticesJobHandle);
+                _handles.Add(handle);
+                _dependencies[i] = handle;
             }
 
             //triangulate surface
@@ -745,8 +755,11 @@ namespace Cutting
             _originalGeneratedMesh = _leftPart;
             //set materials
             var materials = new List<Material>(gameObject.GetComponent<MeshRenderer>().materials);
-            materials.Add(_cutMaterial != null ? _cutMaterial : materials[0]);
-            gameObject.GetComponent<MeshRenderer>().materials = materials.ToArray();
+            var localMaterials = new List<Material>(materials);
+            if (_generatedMeshes[0].triangles.Count <= localMaterials.Count)
+                localMaterials.RemoveAt(localMaterials.Count - 1);
+            localMaterials.Add(_cutMaterial != null ? _cutMaterial : materials[0]);
+            gameObject.GetComponent<MeshRenderer>().materials = localMaterials.ToArray();
             Destroy(GetComponent<Collider>());
             if (_useSimpleColliders)
             {
@@ -762,11 +775,9 @@ namespace Cutting
                 currentRb = gameObject.AddComponent<Rigidbody>();
             }
             currentRb.ResetCenterOfMass();
-            _createdMeshes.Remove(_createdMeshes[0]);
-            _generatedMeshes.Remove(_generatedMeshes[0]);
 
             //create new objects
-            for (var i = 0; i < _createdMeshes.Count; i++)
+            for (var i = 1; i < _createdMeshes.Count; i++)
             {
                 var part = new GameObject(gameObject.name + "_part");
 
@@ -776,7 +787,11 @@ namespace Cutting
                 partMeshFilter.mesh = _createdMeshes[i];
                 var partRenderer = part.AddComponent<MeshRenderer>();
                 //set materials
-                partRenderer.materials = materials.ToArray();
+                localMaterials = new List<Material>(materials);
+                if (_generatedMeshes[0].triangles.Count <= localMaterials.Count)
+                    localMaterials.RemoveAt(localMaterials.Count - 1);
+                localMaterials.Add(_cutMaterial != null ? _cutMaterial : materials[0]);
+                partRenderer.materials = localMaterials.ToArray();
 
                 if (_useSimpleColliders)
                 {
@@ -786,7 +801,7 @@ namespace Cutting
                 {
                     part.AddComponent<MeshCollider>().convex = true;
                 }
-                part.AddComponent<Rigidbody>();
+                part.AddComponent<Rigidbody>().ResetCenterOfMass();
             
                 //
                 var partCuttableMeshComponent = part.AddComponent<CuttableMesh>();
