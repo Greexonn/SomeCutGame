@@ -24,6 +24,7 @@ namespace Cutting.Jobs
                 return;
             
             edgeVertices.RemoveAtSwapBack(doubleId);
+            var swapId = edgeVertices.Length;
             
             if (edgesToLeft[originalId] < 0) //if left free
             {
@@ -33,16 +34,42 @@ namespace Cutting.Jobs
             {
                 ConnectRight(originalId, doubleId);
             }
+            
+            PatchSwapped(doubleId, swapId);
         }
         
         private void ConnectLeft(int vertexId, int doubleId)
         {
-            edgesToLeft[vertexId] = edgesToLeft[doubleId];
+            var connected = edgesToLeft[doubleId];
+            edgesToLeft[vertexId] = connected;
+            edgesToRight[connected] = vertexId;
         }
 
         private void ConnectRight(int vertexId, int doubleId)
         {
-            edgesToRight[vertexId] = edgesToRight[doubleId];
+            var connected = edgesToRight[doubleId];
+            edgesToRight[vertexId] = connected;
+            edgesToLeft[connected] = vertexId;
+        }
+
+        private void PatchSwapped(int doubleId, int swapId)
+        {
+            if (doubleId == swapId)
+                return;
+            
+            var left = edgesToLeft[swapId];
+            if (left > 0)
+            {
+                edgesToRight[left] = doubleId;
+                edgesToLeft[doubleId] = left;
+            }
+
+            var right = edgesToRight[swapId];
+            if (right > 0)
+            {
+                edgesToLeft[right] = doubleId;
+                edgesToRight[doubleId] = right;
+            }
         }
     }
 }

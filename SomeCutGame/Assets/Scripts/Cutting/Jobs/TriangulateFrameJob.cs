@@ -21,8 +21,9 @@ namespace Cutting.Jobs
         public void Execute()
         {
             _tipIndex = 0;
-            _maxIndex = edgeVerticesOnPlane.Length - 1;
-            while (_tipIndex <= _maxIndex)
+            _maxIndex = edgeVerticesOnPlane.Length;
+            
+            while (_tipIndex < _maxIndex)
             {
                 FindTriangle();
             }
@@ -36,7 +37,7 @@ namespace Cutting.Jobs
             
             var left = edgesToLeft[tip];
             var right = edgesToRight[tip];
-            if (left < 0 || right < 0 || left > _maxIndex || right > _maxIndex)
+            if (left < 0 || right < 0 || left >= _maxIndex || right >= _maxIndex)
             {
                 _tipIndex++;
                 return;

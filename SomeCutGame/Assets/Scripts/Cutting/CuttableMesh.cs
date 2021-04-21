@@ -473,11 +473,11 @@ namespace Cutting
             {
                 var length = _originalIntersectingTrianglesList[i].Length * 2;
                 
-                _edgesToLeft[i] = new NativeArray<int>(length, Allocator.TempJob);
-                _edgesToRight[i] = new NativeArray<int>(length, Allocator.TempJob);
+                _edgesToLeft[i] = new NativeArray<int>(length / 3, Allocator.TempJob);
+                _edgesToRight[i] = new NativeArray<int>(length / 3, Allocator.TempJob);
 
                 // clear arrays
-                for (var j = 0; j < length; j++)
+                for (var j = 0; j < length / 3; j++)
                 {
                     _edgesToLeft[i][j] = -1;
                     _edgesToRight[i][j] = -1;

@@ -2699,3 +2699,208 @@ System memory in use after: 245.5 MB.
 Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3055.
 Total: 5.565669 ms (FindLiveObjects: 0.404661 ms CreateObjectMapping: 0.114889 ms MarkObjects: 4.970411 ms  DeleteObjects: 0.073994 ms)
 
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003479 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.47 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.564 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.37 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 245.8 MB.
+System memory in use after: 246.0 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3059.
+Total: 2.528893 ms (FindLiveObjects: 0.355751 ms CreateObjectMapping: 0.108284 ms MarkObjects: 2.044086 ms  DeleteObjects: 0.019834 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002859 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.51 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.331 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.35 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 246.2 MB.
+System memory in use after: 246.4 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3063.
+Total: 2.108550 ms (FindLiveObjects: 0.238257 ms CreateObjectMapping: 0.077067 ms MarkObjects: 1.778753 ms  DeleteObjects: 0.013694 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003028 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.33 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.269 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.35 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 246.7 MB.
+System memory in use after: 246.9 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3067.
+Total: 2.004174 ms (FindLiveObjects: 0.317611 ms CreateObjectMapping: 0.091484 ms MarkObjects: 1.581287 ms  DeleteObjects: 0.013037 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002822 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.37 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.328 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.54 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 247.1 MB.
+System memory in use after: 247.3 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3071.
+Total: 4.310749 ms (FindLiveObjects: 0.499565 ms CreateObjectMapping: 0.101306 ms MarkObjects: 3.688273 ms  DeleteObjects: 0.020555 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002394 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.38 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.346 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.40 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 247.6 MB.
+System memory in use after: 247.8 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3075.
+Total: 2.098446 ms (FindLiveObjects: 0.271877 ms CreateObjectMapping: 0.093631 ms MarkObjects: 1.718629 ms  DeleteObjects: 0.013572 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003152 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.43 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.400 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.43 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 248.1 MB.
+System memory in use after: 248.3 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3079.
+Total: 2.531945 ms (FindLiveObjects: 0.342546 ms CreateObjectMapping: 0.107361 ms MarkObjects: 2.060272 ms  DeleteObjects: 0.020553 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.003501 seconds.
+Begin MonoManager ReloadAssembly
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Refreshing native plugins compatible for Editor in 0.42 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Mono: successfully reloaded assembly
+- Completed reload, in  1.382 seconds
+Platform modules already initialized, skipping
+Shader 'Universal Render Pipeline/Particles/Lit': fallback shader 'Universal Render Pipeline/Particles/SimpleLit' not found
+Refreshing native plugins compatible for Editor in 0.39 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Unloading 2073 Unused Serialized files (Serialized files now loaded: 0)
+System memory in use before: 248.5 MB.
+System memory in use after: 248.7 MB.
+
+Unloading 13 unused Assets to reduce memory usage. Loaded Objects now: 3083.
+Total: 1.988619 ms (FindLiveObjects: 0.283175 ms CreateObjectMapping: 0.088376 ms MarkObjects: 1.599417 ms  DeleteObjects: 0.016454 ms)
+
+========================================================================
+Received Prepare
+Registering precompiled user dll's ...
+Registered in 0.002873 seconds.
+Callback registration failed. Increase kMaxCallback.
+
+Fatal Error! Callback registration failed. Increase kMaxCallback.
+
+Obtained 42 stack frames.
+#0  0x007fff2058a462 in __pthread_kill
+#1  0x007fff2050b720 in abort
+#2  0x0000011328ae5e in CrashDontLaunchBugReporter()
+#3  0x00000110eafde7 in EditorMonoConsole::LogToConsoleImplementation(CppLogEntry const&)
+#4  0x00000110eaf1e7 in EditorMonoConsole::LogToConsoleImplementation(DebugStringToFileData const&)
+#5  0x00000110eb0b7e in LogToConsoleImplementation(DebugStringToFileData const&)
+#6  0x00000112c6267d in DebugStringToFilePostprocessedStacktrace(DebugStringToFileData const&)
+#7  0x00000112c62f63 in DebugStringToFile(DebugStringToFileData const&)
+#8  0x0000010e8d7ea4 in CallbackArrayBase<void (*)(AssemblyLoadFailure), void (*)(void const*, AssemblyLoadFailure)>::Register(void (*)(AssemblyLoadFailure), void (*)(void const*, AssemblyLoadFailure), void const*)
+#9  0x00000111847828 in LoadDomainAndUserAssemblies(bool)
+#10 0x0000011184a21e in LoadUserAssemblies()
+#11 0x00000111ce5559 in AssetImportWorkerClient::ReloadMonoDomain(AssetResolver&)
+#12 0x00000111ceca1a in core::mutable_function<void ()>::DispatchT<void IOService::PostHelper<AssetImportWorkerClient::HandleMessage(PrepareMessage const&)::$_1>(AssetImportWorkerClient::HandleMessage(PrepareMessage const&)::$_1&&, IOService::WrapCallableInFunctionTag)::'lambda'()>::Dispatch()
+#13 0x00000111dbdb00 in asio::detail::completion_handler<core::mutable_function<void ()> >::do_complete(asio::detail::task_io_service*, asio::detail::task_io_service_operation*, std::__1::error_code const&, unsigned long)
+#14 0x00000111dbadc5 in asio::detail::task_io_service::do_run_one(asio::detail::scoped_lock<asio::detail::posix_mutex>&, asio::detail::task_io_service_thread_info&, std::__1::error_code const&)
+#15 0x00000111dba861 in asio::detail::task_io_service::run(std::__1::error_code&)
+#16 0x00000111db4b2a in IOService::Run(bool)
+#17 0x00000111d16abc in RunAssetImporterV2()
+#18 0x00000111025d03 in Application::InitializeProject()
+#19 0x000001132967ad in -[EditorApplication applicationDidFinishLaunching:]
+#20 0x007fff206a5fec in __CFNOTIFICATIONCENTER_IS_CALLING_OUT_TO_AN_OBSERVER__
+#21 0x007fff2074189b in ___CFXRegistrationPost_block_invoke
+#22 0x007fff2074180f in _CFXRegistrationPost
+#23 0x007fff20676bde in _CFXNotificationPost
+#24 0x007fff213e5abe in -[NSNotificationCenter postNotificationName:object:userInfo:]
+#25 0x007fff22ed7b2d in -[NSApplication _postDidFinishNotification]
+#26 0x007fff22ed787b in -[NSApplication _sendFinishLaunchingNotification]
+#27 0x007fff22ed4a72 in -[NSApplication(NSAppleEventHandling) _handleAEOpenEvent:]
+#28 0x007fff22ed46c7 in -[NSApplication(NSAppleEventHandling) _handleCoreEvent:withReplyEvent:]
+#29 0x007fff21411056 in -[NSAppleEventManager dispatchRawAppleEvent:withRawReply:handlerRefCon:]
+#30 0x007fff21410ec6 in _NSAppleEventManagerGenericHandler
+#31 0x007fff2648eed9 in _AppleEventsCheckInAppWithBlock
+#32 0x007fff2648e5f4 in _AppleEventsCheckInAppWithBlock
+#33 0x007fff26487260 in aeProcessAppleEvent
+#34 0x007fff289485a2 in AEProcessAppleEvent
+#35 0x007fff22ecee3e in _DPSNextEvent
+#36 0x007fff22ecd177 in -[NSApplication(NSEvent) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]
+#37 0x007fff22ebf68a in -[NSApplication run]
+#38 0x007fff22e9396f in NSApplicationMain
+#39 0x000001132d1579 in EditorMain(int, char const**)
+#40 0x000001132d17a9 in main
+#41 0x007fff205d3621 in start
