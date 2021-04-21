@@ -1,6 +1,7 @@
 using System;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
 namespace Cutting.Jobs
@@ -14,7 +15,7 @@ namespace Cutting.Jobs
         public int trianglesStartIndex;
         public int trianglesReadOffset;
         
-        [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<int> sideTriangles;
+        [WriteOnly, NativeDisableContainerSafetyRestriction] public NativeArray<int> sideTriangles;
         
         public void Execute(int index)
         {

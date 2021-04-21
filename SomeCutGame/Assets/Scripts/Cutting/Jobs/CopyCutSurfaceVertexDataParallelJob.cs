@@ -1,6 +1,7 @@
 using Cutting.Data;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
@@ -14,8 +15,8 @@ namespace Cutting.Jobs
         public float3 normal;
         public int verticesStartIndex;
         
-        [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<float3> sideVertices, sideNormals;
-        [WriteOnly, NativeDisableParallelForRestriction] public NativeArray<float2> sideUVs;
+        [WriteOnly, NativeDisableContainerSafetyRestriction] public NativeArray<float3> sideVertices, sideNormals;
+        [WriteOnly, NativeDisableContainerSafetyRestriction] public NativeArray<float2> sideUVs;
 
         public void Execute(int index)
         {
