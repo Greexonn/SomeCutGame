@@ -1,3 +1,4 @@
+using Cutting.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -10,7 +11,8 @@ namespace Cutting.Jobs
     {
         [ReadOnly] public NativeArray<int> vertexDoubleIds;
 
-        public NativeList<float2> edgeVertices;
+        public NativeList<float2> edgeVerticesOnPlane;
+        public NativeList<NewVertexInfo> edgeVertices;
         public NativeArray<int> edgesToLeft, edgesToRight;
         
         public void Execute(int index)
@@ -23,8 +25,9 @@ namespace Cutting.Jobs
             if (originalId < 0)
                 return;
             
+            edgeVerticesOnPlane.RemoveAtSwapBack(doubleId);
             edgeVertices.RemoveAtSwapBack(doubleId);
-            var swapId = edgeVertices.Length;
+            var swapId = edgeVerticesOnPlane.Length;
             
             if (edgesToLeft[originalId] < 0) //if left free
             {

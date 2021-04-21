@@ -54,7 +54,7 @@ namespace Cutting
         private NativeQueue<int> _addedTrianglesRight;
         private NativeArray<Edge>[] _intersectedEdges;
 
-        private NativeArray<NewVertexInfo>[] _edgeVertices;
+        private NativeList<NewVertexInfo>[] _edgeVertices;
         private NativeArray<int>[] _edgesToLeft, _edgesToRight;
         private NativeList<float2>[] _edgeVerticesOnPlane;
         private NativeArray<int>[] _sortedEdgeVertices;
@@ -530,19 +530,22 @@ namespace Cutting
 
             //translate vertices coordinates to plane coordinates
             _edgeVerticesOnPlane = new NativeList<float2>[_subMeshCount];
-            _edgeVertices = new NativeArray<NewVertexInfo>[_subMeshCount];
+            _edgeVertices = new NativeList<NewVertexInfo>[_subMeshCount];
             for (var i = 0; i < _subMeshCount; i++)
             {
                 _edgeVerticesOnPlane[i] = new NativeList<float2>(_intersectedEdges[i].Length, Allocator.TempJob);
                 _edgeVerticesOnPlane[i].ResizeUninitialized(_intersectedEdges[i].Length);
-                _edgeVertices[i] = _edgesToVertices[i].GetValueArray(Allocator.TempJob);
+                var edgeVertices = _edgesToVertices[i].GetValueArray(Allocator.Temp);
+                _edgeVertices[i] = new NativeList<NewVertexInfo>(edgeVertices.Length, Allocator.TempJob);
+                _edgeVertices[i].CopyFrom(edgeVertices);
+                edgeVertices.Dispose();
 
                 var translateCoordinates = new TranslateCoordinatesToPlaneParallelJob
                 {
                     planeXAxis = _planeXAxis,
                     planeYAxis = _planeYAxis,
                     edgeVertices = _edgeVertices[i],
-                    edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray()
+                    edgeVerticesOnPlane = _edgeVerticesOnPlane[i]
                 };
 
                 _handles.Add(translateCoordinates.Schedule(_edgesToVertices[i].Count(), _intersectedEdges[i].Length / 10 + 1));
@@ -570,7 +573,8 @@ namespace Cutting
                 var removeDoublesJob = new RemoveDoubleVerticesJob
                 {
                     vertexDoubleIds = _vertexDoubleIds[i],
-                    edgeVertices = _edgeVerticesOnPlane[i],
+                    edgeVerticesOnPlane = _edgeVerticesOnPlane[i],
+                    edgeVertices = _edgeVertices[i],
                     edgesToLeft = _edgesToLeft[i],
                     edgesToRight = _edgesToRight[i]
                 };
