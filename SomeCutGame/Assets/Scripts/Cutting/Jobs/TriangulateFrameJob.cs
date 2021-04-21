@@ -23,7 +23,7 @@ namespace Cutting.Jobs
             _tipIndex = 0;
             _maxIndex = edgeVerticesOnPlane.Length;
             
-            while (_tipIndex < _maxIndex)
+            while (_tipIndex < _maxIndex - 2)
             {
                 FindTriangle();
             }
@@ -31,7 +31,8 @@ namespace Cutting.Jobs
 
         private void FindTriangle()
         {
-            NativeArray<int> localEdgesToLeft, localEdgesToRight;
+            var localEdgesToLeft = edgesToLeft;
+            var localEdgesToRight = edgesToRight;
 
             var tip = sortedEdgeVertices[_tipIndex];
             
@@ -53,11 +54,6 @@ namespace Cutting.Jobs
                 //swap
                 localEdgesToLeft = edgesToRight;
                 localEdgesToRight = edgesToLeft;
-            }
-            else
-            {
-                localEdgesToLeft = edgesToLeft;
-                localEdgesToRight = edgesToRight;
             }
 
             //store triangle

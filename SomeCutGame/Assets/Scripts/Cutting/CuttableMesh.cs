@@ -57,7 +57,7 @@ namespace Cutting
         private NativeArray<NewVertexInfo>[] _edgeVertices;
         private NativeArray<int>[] _edgesToLeft, _edgesToRight;
         private NativeList<float2>[] _edgeVerticesOnPlane;
-        private NativeList<int>[] _sortedEdgeVertices;
+        private NativeArray<int>[] _sortedEdgeVertices;
         private NativeArray<int>[] _vertexDoubleIds;
         private NativeList<int>[] _cutSurfaceTriangles;
 
@@ -550,14 +550,13 @@ namespace Cutting
             }
         
             //sort edge vertices
-            _sortedEdgeVertices = new NativeList<int>[_subMeshCount];
+            _sortedEdgeVertices = new NativeArray<int>[_subMeshCount];
             _vertexDoubleIds = new NativeArray<int>[_subMeshCount];
             for (var i = 0; i < _subMeshCount; i++)
             {
                 var edgeVertexCount = _edgeVertices[i].Length;
                 
-                _sortedEdgeVertices[i] = new NativeList<int>(edgeVertexCount, Allocator.TempJob);
-                _sortedEdgeVertices[i].ResizeUninitialized(edgeVertexCount);
+                _sortedEdgeVertices[i] = new NativeArray<int>(edgeVertexCount, Allocator.TempJob);
                 _vertexDoubleIds[i] = new NativeArray<int>(edgeVertexCount, Allocator.TempJob);
 
                 var findDoublesParallelJob = new FindVertexOnPlaneDoublesParallelJob
@@ -581,13 +580,13 @@ namespace Cutting
                 var sortVerticesParallelJob = new SortEdgeVerticesParallelJob
                 {
                     edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray(),
-                    sortedEdgeVertices = _sortedEdgeVertices[i].AsArray()
+                    sortedEdgeVertices = _sortedEdgeVertices[i]
                 };
 
                 var sortVerticesJobHandle = sortVerticesParallelJob.Schedule(edgeVertexCount, edgeVertexCount / JobsUtility.JobWorkerCount, removeDoublesJobHandle);
                 
                 _handles.Add(sortVerticesJobHandle);
-                _dependencies[i] = _handles[_handles.Length - 1];
+                _dependencies[i] = sortVerticesJobHandle;
             }
 
             //triangulate surface
@@ -600,57 +599,110 @@ namespace Cutting
                 {
                     edgesToLeft = _edgesToLeft[i],
                     edgesToRight = _edgesToRight[i],
-                    sortedEdgeVertices = _sortedEdgeVertices[i].AsDeferredJobArray(),
+                    sortedEdgeVertices = _sortedEdgeVertices[i],
                     edgeVerticesOnPlane = _edgeVerticesOnPlane[i].AsDeferredJobArray(),
                     cutSurfaceTriangles = _cutSurfaceTriangles[i]
                 };
 
-                _handles.Add(triangulateJob.Schedule(_dependencies[i]));
-                _dependencies[i] = _handles[_handles.Length - 1];
+                var handle = triangulateJob.Schedule(_dependencies[i]);
+                _handles.Add(handle);
+                _dependencies[i] = handle;
             }
-
-            //write data to meshes
+            
+            JobHandle.CompleteAll(_handles);
+            _handles.Clear();
+            
+            // calculate new buffer sizes
+            var leftOriginalVertexCount = _leftPart.vertices.Length;
+            var rightOriginalVertexCount = _rightPart.vertices.Length;
+            var leftNewVertexCount = leftOriginalVertexCount;
+            var rightNewVertexCount = rightOriginalVertexCount;
+            var cutTrianglesCount = 0;
             for (var i = 0; i < _subMeshCount; i++)
             {
-                var copyDataJobLeft = new CopyCutSurfaceTrianglesAndVerticesJob
+                var edgeVertexCount = _edgeVertices[i].Length;
+                leftNewVertexCount += edgeVertexCount;
+                rightNewVertexCount += edgeVertexCount;
+
+                cutTrianglesCount += _cutSurfaceTriangles[i].Length;
+            }
+            
+            // resize vertex buffers
+            _leftPart.ResizeVertices(leftNewVertexCount);
+            _rightPart.ResizeVertices(rightNewVertexCount);
+            
+            // resize triangles buffers
+            _leftPart.ResizeTriangles(_subMeshCount, cutTrianglesCount);
+            _rightPart.ResizeTriangles(_subMeshCount, cutTrianglesCount);
+            
+            var trianglesStartIndex = 0;
+            
+            //copy vertex data and triangles
+            for (var i = 0; i < _subMeshCount; i++)
+            {
+                var trianglesCount = _cutSurfaceTriangles[i].Length;
+                var edgeVertexCount = _edgeVertices[i].Length;
+
+                // schedule copy vertex data
+                var leftCopyVertexDataJob = new CopyCutSurfaceVertexDataParallelJob
                 {
                     edgeVertices = _edgeVertices[i],
-                    cutSurfaceTriangles = _cutSurfaceTriangles[i].AsDeferredJobArray(),
+                    normal = -_cuttingPlaneNormal,
+                    verticesStartIndex = leftOriginalVertexCount,
                     sideVertices = _leftPart.vertices,
                     sideNormals = _leftPart.normals,
-                    sideUVs = _leftPart.uvs,
-                    sideTriangles = _leftPart.triangles[_subMeshCount],
-                    verticesStartCount = _leftPart.vertices.Length,
-                    normal = -_cuttingPlaneNormal,
-                    inverseOrder = true
+                    sideUVs = _leftPart.uvs
                 };
+                
+                var handleLeft = leftCopyVertexDataJob.Schedule(edgeVertexCount, edgeVertexCount / JobsUtility.JobWorkerCount);
+                _handles.Add(handleLeft);
 
-                _handles.Add(copyDataJobLeft.Schedule(_dependencies[i]));
-                _dependencies[i] = _handles[_handles.Length - 1];
-
-                var copyDataJobRight = new CopyCutSurfaceTrianglesAndVerticesJob
+                var rightCopyVertexDataJob = new CopyCutSurfaceVertexDataParallelJob
                 {
                     edgeVertices = _edgeVertices[i],
-                    cutSurfaceTriangles = _cutSurfaceTriangles[i].AsDeferredJobArray(),
+                    normal = _cuttingPlaneNormal,
+                    verticesStartIndex = rightOriginalVertexCount,
                     sideVertices = _rightPart.vertices,
                     sideNormals = _rightPart.normals,
-                    sideUVs = _rightPart.uvs,
-                    sideTriangles = _rightPart.triangles[_subMeshCount],
-                    verticesStartCount = _rightPart.vertices.Length,
-                    normal = _cuttingPlaneNormal,
-                    inverseOrder = false
+                    sideUVs = _rightPart.uvs
+                };
+                
+                var handleRight = rightCopyVertexDataJob.Schedule(edgeVertexCount, edgeVertexCount / JobsUtility.JobWorkerCount);
+                _handles.Add(handleRight);
+                
+                // schedule copy triangles
+                var leftCopyTrianglesJob = new CopyCutSurfaceTrianglesParallelJob
+                {
+                    cutSurfaceTriangles = _cutSurfaceTriangles[i],
+                    vertexStartIndex = leftOriginalVertexCount,
+                    trianglesStartIndex = trianglesStartIndex,
+                    trianglesReadOffset = trianglesCount - 1,
+                    sideTriangles = _leftPart.triangles[_subMeshCount]
                 };
 
-                _handles.Add(copyDataJobRight.Schedule(_dependencies[i]));
-                _dependencies[i] = _handles[_handles.Length - 1];
+                handleLeft = leftCopyTrianglesJob.Schedule(trianglesCount, trianglesCount / JobsUtility.JobWorkerCount);
+                _handles.Add(handleLeft);
+                
+                var rightCopyTrianglesJob = new CopyCutSurfaceTrianglesParallelJob
+                {
+                    cutSurfaceTriangles = _cutSurfaceTriangles[i],
+                    vertexStartIndex = rightOriginalVertexCount,
+                    trianglesStartIndex = trianglesStartIndex,
+                    trianglesReadOffset = 0,
+                    sideTriangles = _rightPart.triangles[_subMeshCount]
+                };
+
+                handleRight = rightCopyTrianglesJob.Schedule(trianglesCount, trianglesCount / JobsUtility.JobWorkerCount);
+                _handles.Add(handleRight);
+                
+                // update start indexes
+                leftOriginalVertexCount += edgeVertexCount;
+                rightOriginalVertexCount += edgeVertexCount;
+
+                trianglesStartIndex += _cutSurfaceTriangles[i].Length;
             }
 
             JobHandle.CompleteAll(_handles);
-
-            // foreach (var vert in _sortedEdgeVertices[0])
-            // {
-            //     print(vert);
-            // }
         }
 
         private void CreateNewObjects()
